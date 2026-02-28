@@ -115,6 +115,14 @@ model Activity {
   maxHeartRate    Int?
   calories        Int?
 
+  // Route fingerprint for similarity search
+  startLatitude     Float?
+  startLongitude    Float?
+  boundingBoxMinLat Float?
+  boundingBoxMaxLat Float?
+  boundingBoxMinLon Float?
+  boundingBoxMaxLon Float?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -124,6 +132,7 @@ model Activity {
   @@index([userId])
   @@index([userId, startDate])
   @@index([startDate])
+  @@index([userId, boundingBoxMinLat, boundingBoxMaxLat, boundingBoxMinLon, boundingBoxMaxLon])
 }
 
 model ActivityPoint {

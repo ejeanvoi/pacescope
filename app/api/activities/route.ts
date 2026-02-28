@@ -16,6 +16,7 @@ import {
   activityListQuerySchema,
   GPX_MAX_FILE_SIZE,
 } from "@/lib/validators/activity";
+import { computeRouteFingerprint } from "@/lib/route-similarity";
 import type { ActivityType, ActivitySource } from "@/generated/prisma/client";
 
 // ─── POST: Upload GPX file ─────────────────────────────────────────
@@ -109,6 +110,9 @@ export async function POST(request: NextRequest) {
     gpxData.name ||
     `Activity on ${(trackpoints[0].timestamp ?? new Date()).toLocaleDateString()}`;
 
+  // Compute route fingerprint for similarity search
+  const fingerprint = computeRouteFingerprint(trackpoints);
+
   // Create activity + points in a transaction
   const activity = await prisma.$transaction(async (tx) => {
     const created = await tx.activity.create({
@@ -126,6 +130,12 @@ export async function POST(request: NextRequest) {
         bestPace,
         averageHeartRate,
         maxHeartRate,
+        startLatitude: fingerprint?.startLatitude ?? null,
+        startLongitude: fingerprint?.startLongitude ?? null,
+        boundingBoxMinLat: fingerprint?.boundingBox.minLat ?? null,
+        boundingBoxMaxLat: fingerprint?.boundingBox.maxLat ?? null,
+        boundingBoxMinLon: fingerprint?.boundingBox.minLon ?? null,
+        boundingBoxMaxLon: fingerprint?.boundingBox.maxLon ?? null,
       },
     });
 

@@ -17,6 +17,7 @@ import {
   calculateHeartRateStats,
   calculateSplits,
 } from "@/lib/calculations";
+import { computeRouteFingerprint } from "@/lib/route-similarity";
 import type { ActivitySource } from "@/generated/prisma/client";
 
 export async function POST() {
@@ -121,6 +122,12 @@ export async function POST() {
         const distance = stravaActivity.distance;
         averagePace = calculateAveragePace(distance, duration);
 
+        // Compute route fingerprint for similarity search
+        const fingerprint =
+          trackpoints.length > 0
+            ? computeRouteFingerprint(trackpoints)
+            : null;
+
         // Create activity + points in a transaction
         await prisma.$transaction(async (tx) => {
           const created = await tx.activity.create({
@@ -141,6 +148,12 @@ export async function POST() {
               averageHeartRate,
               maxHeartRate,
               calories: stravaActivity.calories ?? null,
+              startLatitude: fingerprint?.startLatitude ?? null,
+              startLongitude: fingerprint?.startLongitude ?? null,
+              boundingBoxMinLat: fingerprint?.boundingBox.minLat ?? null,
+              boundingBoxMaxLat: fingerprint?.boundingBox.maxLat ?? null,
+              boundingBoxMinLon: fingerprint?.boundingBox.minLon ?? null,
+              boundingBoxMaxLon: fingerprint?.boundingBox.maxLon ?? null,
             },
           });
 
