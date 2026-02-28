@@ -184,14 +184,15 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { page, limit, sortBy, sortOrder, type } = parsed.data;
+  const { page, limit, sortBy, sortOrder, type, country } = parsed.data;
 
   const where = {
     userId: session.user.id,
     ...(type ? { type: type as ActivityType } : {}),
+    ...(country ? { location: { endsWith: `, ${country}` } } : {}),
   };
 
-  const [activities, total] = await Promise.all([
+  const [activities, total, locationRows] = await Promise.all([
     prisma.activity.findMany({
       where,
       orderBy: { [sortBy]: sortOrder },
@@ -214,7 +215,23 @@ export async function GET(request: NextRequest) {
       },
     }),
     prisma.activity.count({ where }),
+    prisma.activity.findMany({
+      where: { userId: session.user.id, location: { not: null } },
+      select: { location: true },
+      distinct: ["location"],
+    }),
   ]);
+
+  const countries = [
+    ...new Set(
+      locationRows
+        .map((r) => {
+          const parts = r.location?.split(", ");
+          return parts && parts.length >= 2 ? parts[parts.length - 1] : null;
+        })
+        .filter((c): c is string => c != null)
+    ),
+  ].sort((a, b) => a.localeCompare(b));
 
   return NextResponse.json({
     activities,
@@ -224,5 +241,6 @@ export async function GET(request: NextRequest) {
       total,
       totalPages: Math.ceil(total / limit),
     },
+    countries,
   });
 }

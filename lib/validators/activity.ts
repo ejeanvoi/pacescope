@@ -13,6 +13,7 @@ export const activityListQuerySchema = z.object({
     .default("startDate"),
   sortOrder: z.enum(["asc", "desc"]).default("desc"),
   type: z.enum(["RUN", "TRAIL_RUN", "TREADMILL"]).optional(),
+  country: z.string().max(100).optional(),
 });
 
 export const dashboardStatsQuerySchema = z.object({
