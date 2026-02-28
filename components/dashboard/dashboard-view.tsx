@@ -20,6 +20,7 @@ import {
   Flame,
   MapPin,
   Mountain,
+  Trophy,
   TrendingUp,
 } from "lucide-react";
 import { DashboardFilters } from "./dashboard-filters";
@@ -75,6 +76,31 @@ interface DashboardData {
     duration: number;
     averagePace: number | null;
   }>;
+  bestEfforts: {
+    distances: Array<{
+      key: string;
+      label: string;
+      meters: number;
+      time: number | null;
+      activityId: string | null;
+      activityName: string | null;
+    }>;
+    longest: {
+      distance: number;
+      activityId: string | null;
+      activityName: string | null;
+    };
+  };
+}
+
+function formatEffortTime(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.round(seconds % 60);
+  if (h > 0) {
+    return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  }
+  return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
 interface DashboardViewProps {
@@ -256,6 +282,73 @@ export function DashboardView({ userName }: DashboardViewProps) {
             </CardContent>
           </Card>
         </div>
+
+        {/* Personal Records */}
+        {data?.bestEfforts && (
+          data.bestEfforts.distances.some((d) => d.time != null) ||
+          data.bestEfforts.longest.distance > 0
+        ) && (
+          <div className="mt-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <div>
+                  <CardTitle>Personal Records</CardTitle>
+                  <CardDescription>Best efforts &middot; {rangeLabel}</CardDescription>
+                </div>
+                <Trophy className="h-5 w-5 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {data.bestEfforts.distances.map((d) => (
+                    <div key={d.key} className="rounded-lg border p-3">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {d.label}
+                      </p>
+                      {d.time != null && d.activityId ? (
+                        <Link
+                          href={`/activities/${d.activityId}`}
+                          className="group block"
+                        >
+                          <p className="mt-1 font-mono text-lg font-bold">
+                            {formatEffortTime(d.time)}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground group-hover:text-foreground">
+                            {d.activityName}
+                          </p>
+                        </Link>
+                      ) : (
+                        <p className="mt-1 font-mono text-lg text-muted-foreground">
+                          --
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                  <div className="rounded-lg border p-3">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Longest Run
+                    </p>
+                    {data.bestEfforts.longest.distance > 0 &&
+                    data.bestEfforts.longest.activityId ? (
+                      <Link
+                        href={`/activities/${data.bestEfforts.longest.activityId}`}
+                        className="group block"
+                      >
+                        <p className="mt-1 text-lg font-bold">
+                          {formatDistance(data.bestEfforts.longest.distance)}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground group-hover:text-foreground">
+                          {data.bestEfforts.longest.activityName}
+                        </p>
+                      </Link>
+                    ) : (
+                      <p className="mt-1 text-lg text-muted-foreground">--</p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Charts */}
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
