@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { DashboardFilters } from "./dashboard-filters";
 import { DistanceChart } from "./distance-chart";
+import { ElevationChart } from "./elevation-chart";
 import { PaceTrendChart } from "./pace-trend-chart";
 import { MonthlySummary } from "./monthly-summary";
 
@@ -48,6 +49,7 @@ interface DashboardData {
     weekStart: string;
     distance: number;
     duration: number;
+    elevation: number;
     count: number;
   }>;
   monthlySummary: Array<{
@@ -82,6 +84,8 @@ interface DashboardViewProps {
 export function DashboardView({ userName }: DashboardViewProps) {
   const [range, setRange] = useState("all");
   const [type, setType] = useState("");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -90,6 +94,10 @@ export function DashboardView({ userName }: DashboardViewProps) {
     try {
       const params = new URLSearchParams({ range });
       if (type) params.set("type", type);
+      if (range === "custom") {
+        if (customFrom) params.set("from", customFrom);
+        if (customTo) params.set("to", customTo);
+      }
       const res = await fetch(`/api/dashboard/stats?${params}`);
       if (res.ok) {
         setData(await res.json());
@@ -97,7 +105,7 @@ export function DashboardView({ userName }: DashboardViewProps) {
     } finally {
       setLoading(false);
     }
-  }, [range, type]);
+  }, [range, type, customFrom, customTo]);
 
   useEffect(() => {
     fetchData();
@@ -108,7 +116,15 @@ export function DashboardView({ userName }: DashboardViewProps) {
       ? "All time"
       : range === "ytd"
         ? "Year to date"
-        : `Last ${range}`;
+        : range === "custom"
+          ? customFrom && customTo
+            ? `${customFrom} — ${customTo}`
+            : customFrom
+              ? `From ${customFrom}`
+              : customTo
+                ? `Until ${customTo}`
+                : "Custom range"
+          : `Last ${range}`;
 
   return (
     <div className="space-y-6">
@@ -122,8 +138,12 @@ export function DashboardView({ userName }: DashboardViewProps) {
       <DashboardFilters
         range={range}
         type={type}
+        customFrom={customFrom}
+        customTo={customTo}
         onRangeChange={setRange}
         onTypeChange={setType}
+        onCustomFromChange={setCustomFrom}
+        onCustomToChange={setCustomTo}
       />
 
       <div
@@ -239,7 +259,10 @@ export function DashboardView({ userName }: DashboardViewProps) {
 
         {/* Charts */}
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
-          <DistanceChart data={data?.weeklyData ?? []} />
+          <div className="space-y-6">
+            <DistanceChart data={data?.weeklyData ?? []} />
+            <ElevationChart data={data?.weeklyData ?? []} />
+          </div>
           <PaceTrendChart data={data?.paceTrend ?? []} />
         </div>
 

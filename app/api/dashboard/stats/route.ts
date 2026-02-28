@@ -26,29 +26,39 @@ export async function GET(request: NextRequest) {
   // Compute date range
   const now = new Date();
   let fromDate: Date | null = null;
+  let toDate: Date | null = null;
 
-  switch (range) {
-    case "7d":
-      fromDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      break;
-    case "30d":
-      fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      break;
-    case "90d":
-      fromDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-      break;
-    case "365d":
-      fromDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-      break;
-    case "ytd":
-      fromDate = new Date(now.getFullYear(), 0, 1);
-      break;
+  if (range === "custom") {
+    if (parsed.data.from) fromDate = new Date(parsed.data.from + "T00:00:00");
+    if (parsed.data.to) toDate = new Date(parsed.data.to + "T23:59:59.999");
+  } else {
+    switch (range) {
+      case "7d":
+        fromDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case "30d":
+        fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case "90d":
+        fromDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      case "365d":
+        fromDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        break;
+      case "ytd":
+        fromDate = new Date(now.getFullYear(), 0, 1);
+        break;
+    }
   }
+
+  const dateFilter: Record<string, Date> = {};
+  if (fromDate) dateFilter.gte = fromDate;
+  if (toDate) dateFilter.lte = toDate;
 
   const where = {
     userId,
     ...(type ? { type } : {}),
-    ...(fromDate ? { startDate: { gte: fromDate } } : {}),
+    ...(Object.keys(dateFilter).length > 0 ? { startDate: dateFilter } : {}),
   };
 
   // Fetch aggregate stats, weekly data, and recent activities in parallel
@@ -139,7 +149,7 @@ interface ActivityRow {
 function buildWeeklyData(activities: ActivityRow[]) {
   const weekMap = new Map<
     string,
-    { distance: number; duration: number; count: number; weekStart: string }
+    { distance: number; duration: number; elevation: number; count: number; weekStart: string }
   >();
 
   for (const a of activities) {
@@ -155,11 +165,13 @@ function buildWeeklyData(activities: ActivityRow[]) {
     const existing = weekMap.get(key) || {
       distance: 0,
       duration: 0,
+      elevation: 0,
       count: 0,
       weekStart: key,
     };
     existing.distance += a.distance;
     existing.duration += a.duration;
+    existing.elevation += a.elevationGain ?? 0;
     existing.count += 1;
     weekMap.set(key, existing);
   }

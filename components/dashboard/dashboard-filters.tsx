@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 
 const TIME_RANGES = [
   { value: "7d", label: "7 Days" },
@@ -21,23 +22,55 @@ const ACTIVITY_TYPES = [
 interface DashboardFiltersProps {
   range: string;
   type: string;
+  customFrom: string;
+  customTo: string;
   onRangeChange: (range: string) => void;
   onTypeChange: (type: string) => void;
+  onCustomFromChange: (from: string) => void;
+  onCustomToChange: (to: string) => void;
 }
 
 export function DashboardFilters({
   range,
   type,
+  customFrom,
+  customTo,
   onRangeChange,
   onTypeChange,
+  onCustomFromChange,
+  onCustomToChange,
 }: DashboardFiltersProps) {
+  const isCustom = range === "custom";
+
+  const handlePresetClick = (value: string) => {
+    onRangeChange(value);
+    if (value !== "custom") {
+      onCustomFromChange("");
+      onCustomToChange("");
+    }
+  };
+
+  const handleFromChange = (value: string) => {
+    onCustomFromChange(value);
+    if (value || customTo) {
+      onRangeChange("custom");
+    }
+  };
+
+  const handleToChange = (value: string) => {
+    onCustomToChange(value);
+    if (customFrom || value) {
+      onRangeChange("custom");
+    }
+  };
+
   return (
-    <div className="flex flex-wrap gap-4">
+    <div className="flex flex-wrap items-center gap-4">
       <div className="flex flex-wrap gap-1">
         {TIME_RANGES.map((r) => (
           <button
             key={r.value}
-            onClick={() => onRangeChange(r.value)}
+            onClick={() => handlePresetClick(r.value)}
             className={cn(
               "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
               range === r.value
@@ -48,6 +81,27 @@ export function DashboardFilters({
             {r.label}
           </button>
         ))}
+      </div>
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Input
+          type="date"
+          value={customFrom}
+          onChange={(e) => handleFromChange(e.target.value)}
+          className={cn(
+            "h-8 w-[130px] text-xs",
+            isCustom && "ring-1 ring-primary/30"
+          )}
+        />
+        <span>to</span>
+        <Input
+          type="date"
+          value={customTo}
+          onChange={(e) => handleToChange(e.target.value)}
+          className={cn(
+            "h-8 w-[130px] text-xs",
+            isCustom && "ring-1 ring-primary/30"
+          )}
+        />
       </div>
       <div className="flex flex-wrap gap-1">
         {ACTIVITY_TYPES.map((t) => (

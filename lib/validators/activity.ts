@@ -16,8 +16,10 @@ export const activityListQuerySchema = z.object({
 });
 
 export const dashboardStatsQuerySchema = z.object({
-  range: z.enum(["7d", "30d", "90d", "365d", "ytd", "all"]).default("all"),
+  range: z.enum(["7d", "30d", "90d", "365d", "ytd", "all", "custom"]).default("all"),
   type: z.enum(["RUN", "TRAIL_RUN", "TREADMILL"]).optional(),
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 export const globalDashboardQuerySchema = z.object({
