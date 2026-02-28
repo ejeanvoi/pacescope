@@ -74,10 +74,37 @@ export default async function ActivityDetailPage({
     longitude: p.longitude,
   }));
 
-  // Prepare elevation data
+  // Compute per-point instantaneous pace (smoothed over a rolling window)
+  const pointPaces: (number | null)[] = activity.points.map((p, i) => {
+    if (i === 0) return null;
+    const prev = activity.points[i - 1];
+    if (!p.timestamp || !prev.timestamp) return null;
+    const timeDiff =
+      (new Date(p.timestamp).getTime() - new Date(prev.timestamp).getTime()) /
+      1000;
+    const distDiff = cumulativeDistances[i] - cumulativeDistances[i - 1];
+    if (distDiff <= 0 || timeDiff <= 0) return null;
+    return (timeDiff / distDiff) * 1000; // sec per km
+  });
+
+  // Smooth pace with a rolling average (window of ~10 points) to reduce noise
+  const smoothWindow = 10;
+  const smoothedPaces: (number | null)[] = pointPaces.map((_, i) => {
+    const start = Math.max(0, i - Math.floor(smoothWindow / 2));
+    const end = Math.min(pointPaces.length, i + Math.ceil(smoothWindow / 2));
+    const values = pointPaces
+      .slice(start, end)
+      .filter((v): v is number => v != null && v > 60 && v < 1200);
+    if (values.length === 0) return null;
+    return values.reduce((s, v) => s + v, 0) / values.length;
+  });
+
+  // Prepare elevation data with pace and heart rate
   const elevationData = activity.points.map((p, i) => ({
     distance: cumulativeDistances[i],
     elevation: p.elevation,
+    pace: smoothedPaces[i],
+    heartRate: p.heartRate,
   }));
 
   return (
