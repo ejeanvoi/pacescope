@@ -100,17 +100,24 @@ export function CompareView() {
     return true;
   });
 
-  // Fetch all activities for selection
+  // Fetch all activities for selection (paginate through all pages)
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(
-          "/api/activities?limit=100&sortBy=startDate&sortOrder=desc"
-        );
-        if (res.ok) {
+        const all: ActivitySummary[] = [];
+        let page = 1;
+        let totalPages = 1;
+        do {
+          const res = await fetch(
+            `/api/activities?limit=100&page=${page}&sortBy=startDate&sortOrder=desc`
+          );
+          if (!res.ok) break;
           const data = await res.json();
-          setAllActivities(data.activities);
-        }
+          all.push(...data.activities);
+          totalPages = data.pagination.totalPages;
+          page++;
+        } while (page <= totalPages);
+        setAllActivities(all);
       } finally {
         setLoadingList(false);
       }
