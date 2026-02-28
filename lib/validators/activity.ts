@@ -15,4 +15,14 @@ export const activityListQuerySchema = z.object({
   type: z.enum(["RUN", "TRAIL_RUN", "TREADMILL"]).optional(),
 });
 
+export const dashboardStatsQuerySchema = z.object({
+  range: z.enum(["7d", "30d", "90d", "365d", "ytd", "all"]).default("all"),
+  type: z.enum(["RUN", "TRAIL_RUN", "TREADMILL"]).optional(),
+});
+
+export const globalDashboardQuerySchema = z.object({
+  period: z.enum(["weekly", "monthly", "all"]).default("all"),
+  type: z.enum(["RUN", "TRAIL_RUN", "TREADMILL"]).optional(),
+});
+
 export const GPX_MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB

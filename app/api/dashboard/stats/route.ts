@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { dashboardStatsQuerySchema } from "@/lib/validators/activity";
 import type { ActivityType } from "@/generated/prisma/client";
 
 export async function GET(request: NextRequest) {
@@ -10,11 +11,17 @@ export async function GET(request: NextRequest) {
   }
 
   const userId = session.user.id;
-  const params = request.nextUrl.searchParams;
+  const searchParams = Object.fromEntries(request.nextUrl.searchParams);
 
-  // Parse filters
-  const range = params.get("range") || "all"; // 7d, 30d, 90d, 365d, ytd, all
-  const type = params.get("type") as ActivityType | null;
+  const parsed = dashboardStatsQuerySchema.safeParse(searchParams);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid query parameters" },
+      { status: 400 }
+    );
+  }
+
+  const { range, type } = parsed.data;
 
   // Compute date range
   const now = new Date();
