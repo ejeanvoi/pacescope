@@ -8,7 +8,7 @@ import {
 } from "@/lib/route-similarity";
 
 const BBOX_PADDING = 0.002; // ~200m in degrees
-const MAX_CANDIDATES = 50;
+const MAX_CANDIDATES = 200;
 
 export async function GET(
   request: NextRequest,
@@ -164,8 +164,10 @@ export async function GET(
     }
   }
 
-  // Sort by similarity descending
-  results.sort((a, b) => b.similarity - a.similarity);
+  // Sort by date (most recent first)
+  results.sort(
+    (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+  );
 
   return NextResponse.json({
     similar: results.slice(0, limit),

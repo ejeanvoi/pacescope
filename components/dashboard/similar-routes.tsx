@@ -46,7 +46,7 @@ export function SimilarRoutes({
     setError(null);
     try {
       const res = await fetch(
-        `/api/activities/${sourceActivityId}/similar?threshold=${threshold}`
+        `/api/activities/${sourceActivityId}/similar?threshold=${threshold}&limit=50`
       );
       if (res.ok) {
         const data = await res.json();
@@ -108,7 +108,7 @@ export function SimilarRoutes({
         )}
 
         {results.length > 0 && (
-          <div className="max-h-60 space-y-1 overflow-y-auto">
+          <div className="max-h-96 space-y-1 overflow-y-auto">
             {results.map((r) => (
               <div
                 key={r.id}
