@@ -594,6 +594,20 @@ Current limits:
 | `globalDashboardQuerySchema` | `activity.ts` | Period (weekly/monthly/all) + type filter |
 | `similarRoutesQuerySchema` | `activity.ts` | Threshold (0-100) + limit (1-100) for route similarity search |
 
+### `lib/geocoding.ts` — Reverse Geocoding
+
+Converts GPS coordinates to a human-readable location name using OpenStreetMap Nominatim.
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `reverseGeocode` | `(latitude, longitude) → Promise<string \| null>` | Reverse-geocode coordinates to a short location string (e.g. "Paris, France"). Returns null on failure |
+
+- Called at GPX upload and Strava sync time; result stored in `Activity.location`
+- Uses Nominatim: free, no API key, max 1 req/sec, requires User-Agent header
+- Backfill existing activities: `npx tsx prisma/backfill-locations.ts` (respects 1 req/sec rate limit)
+- Location format: "City, Country" (falls back to town/village/region as needed)
+- 5-second timeout; never blocks activity creation on failure
+
 ### `lib/route-similarity.ts` — Route Similarity
 
 Computes GPS route similarity between activities. Used by the "Find Similar Routes" feature on the compare page.

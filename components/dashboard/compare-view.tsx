@@ -39,6 +39,7 @@ interface ActivitySummary {
   duration: number;
   averagePace: number | null;
   elevationGain: number | null;
+  location: string | null;
 }
 
 interface CompareActivity {
@@ -309,6 +310,11 @@ export function CompareView() {
                         )}
                       >
                         {a.name}
+                        {a.location && (
+                          <span className="ml-1 font-normal text-muted-foreground">
+                            — {a.location}
+                          </span>
+                        )}
                       </span>
                       <span className="text-xs text-muted-foreground">
                         {new Date(a.startDate).toLocaleDateString(undefined, {

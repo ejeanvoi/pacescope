@@ -94,6 +94,11 @@ export default async function ActivityDetailPage({
           </Link>
           <h1 className="text-3xl font-bold tracking-tight">
             {activity.name}
+            {activity.location && (
+              <span className="ml-2 text-lg font-normal text-muted-foreground">
+                — {activity.location}
+              </span>
+            )}
           </h1>
           <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
             <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">

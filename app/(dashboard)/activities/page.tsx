@@ -29,6 +29,7 @@ export default async function ActivitiesPage() {
         averagePace: true,
         bestPace: true,
         averageHeartRate: true,
+        location: true,
         createdAt: true,
       },
     }),

@@ -18,6 +18,7 @@ import {
   calculateSplits,
 } from "@/lib/calculations";
 import { computeRouteFingerprint } from "@/lib/route-similarity";
+import { reverseGeocode } from "@/lib/geocoding";
 import type { ActivitySource } from "@/generated/prisma/client";
 
 export async function POST() {
@@ -128,6 +129,14 @@ export async function POST() {
             ? computeRouteFingerprint(trackpoints)
             : null;
 
+        // Reverse-geocode start point to get location name
+        const location = fingerprint
+          ? await reverseGeocode(
+              fingerprint.startLatitude,
+              fingerprint.startLongitude
+            )
+          : null;
+
         // Create activity + points in a transaction
         await prisma.$transaction(async (tx) => {
           const created = await tx.activity.create({
@@ -148,6 +157,7 @@ export async function POST() {
               averageHeartRate,
               maxHeartRate,
               calories: stravaActivity.calories ?? null,
+              location,
               startLatitude: fingerprint?.startLatitude ?? null,
               startLongitude: fingerprint?.startLongitude ?? null,
               boundingBoxMinLat: fingerprint?.boundingBox.minLat ?? null,
