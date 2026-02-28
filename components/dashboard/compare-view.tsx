@@ -20,8 +20,14 @@ import { ComparePaceChart } from "./compare-pace-chart";
 import { ComparePaceAlongTrackChart } from "./compare-pace-along-track-chart";
 import { CompareHeartRateChart } from "./compare-heart-rate-chart";
 import { SimilarRoutes } from "./similar-routes";
+import { CompareTrendAnalysis } from "./compare-trend-analysis";
 
-const ROUTE_COLORS = ["#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c"];
+const ROUTE_COLORS = [
+  "#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c",
+  "#0891b2", "#be185d", "#854d0e", "#4f46e5", "#059669",
+  "#e11d48", "#7c3aed", "#ca8a04", "#0d9488", "#c2410c",
+  "#6366f1", "#15803d", "#b91c1c", "#7e22ce", "#0e7490",
+];
 
 const ACTIVITY_TYPES = [
   { value: "ALL", label: "All" },
@@ -45,10 +51,12 @@ interface ActivitySummary {
 interface CompareActivity {
   id: string;
   name: string;
+  startDate: string;
   distance: number;
   duration: number;
   averagePace: number | null;
   elevationGain: number | null;
+  averageHeartRate: number | null;
   points: Array<{
     latitude: number;
     longitude: number;
@@ -153,7 +161,7 @@ export function CompareView() {
     setSelectedIds((prev) =>
       prev.includes(id)
         ? prev.filter((x) => x !== id)
-        : prev.length < 5
+        : prev.length < 20
           ? [...prev, id]
           : prev
     );
@@ -162,7 +170,7 @@ export function CompareView() {
   const addMultipleToCompare = (ids: string[]) => {
     setSelectedIds((prev) => {
       const toAdd = ids.filter((id) => !prev.includes(id));
-      return [...prev, ...toAdd].slice(0, 5);
+      return [...prev, ...toAdd].slice(0, 20);
     });
   };
 
@@ -179,7 +187,7 @@ export function CompareView() {
             Compare Activities
           </h1>
           <p className="text-muted-foreground">
-            Select 2-5 activities to compare
+            Select 2-20 activities to compare
           </p>
         </div>
       </div>
@@ -189,7 +197,7 @@ export function CompareView() {
         <CardHeader>
           <CardTitle className="text-base">Select Activities</CardTitle>
           <CardDescription>
-            {selectedIds.length} of 5 selected
+            {selectedIds.length} of 20 selected
             {hasFilters &&
               ` · showing ${filteredActivities.length} of ${allActivities.length}`}
           </CardDescription>
@@ -428,6 +436,9 @@ export function CompareView() {
               points: a.points,
             }))}
           />
+
+          {/* Trend analysis */}
+          <CompareTrendAnalysis activities={compareData} />
         </div>
       )}
     </div>

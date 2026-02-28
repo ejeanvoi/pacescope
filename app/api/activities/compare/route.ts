@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const activityIds = ids.split(",").slice(0, 5); // Max 5 activities
+  const activityIds = ids.split(",").slice(0, 20); // Max 20 activities
 
   const activities = await prisma.activity.findMany({
     where: {
