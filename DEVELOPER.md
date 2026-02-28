@@ -209,6 +209,7 @@ pacescope/
 ├── prisma/
 │   ├── schema.prisma                 # Database schema
 │   ├── seed.ts                       # Admin user seeder
+│   ├── backfill-locations.ts         # Backfill reverse-geocoded locations
 │   └── migrations/                   # Migration history
 │
 ├── generated/prisma/                 # Auto-generated Prisma client
@@ -252,6 +253,7 @@ pacescope/
 └──────┬──────┘  │    │ averagePace     │  │    └──────────────────┘
        │         │    │ bestPace        │  │
        │         │    │ averageHeartRate│  │
+       │         │    │ location        │  │
        │         │    │ stravaActivityId│  │
        │         │    └─────────────────┘  │
        │         │                         │
@@ -276,7 +278,7 @@ pacescope/
 | Model | Purpose | Key Fields |
 |-------|---------|-----------|
 | **User** | Registered user | `email` (unique), `passwordHash`, `role` (USER/ADMIN), `globalVisibility` (opt-in leaderboard) |
-| **Activity** | A single run | `type` (RUN/TRAIL_RUN/TREADMILL), `source` (GPX/STRAVA), `distance` (meters), `duration` (seconds), `averagePace` (sec/km) |
+| **Activity** | A single run | `type` (RUN/TRAIL_RUN/TREADMILL), `source` (GPX/STRAVA), `distance` (meters), `duration` (seconds), `averagePace` (sec/km), `location` (reverse-geocoded, nullable) |
 | **ActivityPoint** | GPS trackpoint | `latitude`, `longitude`, `elevation`, `timestamp`, `heartRate`, `cumulativeDistance` |
 | **StravaConnection** | OAuth link | `accessToken` (AES-256-GCM encrypted), `refreshToken` (encrypted), `expiresAt` (unix timestamp) |
 
@@ -402,7 +404,7 @@ All endpoints return JSON. Authentication is checked via `await auth()` from `@/
 | GET | `/api/activities` | Yes | List activities (paginated) |
 | GET | `/api/activities/[id]` | Yes | Activity detail with trackpoints |
 | DELETE | `/api/activities/[id]` | Yes | Delete activity |
-| GET | `/api/activities/compare` | Yes | Compare up to 5 activities |
+| GET | `/api/activities/compare` | Yes | Compare up to 20 activities |
 | GET | `/api/activities/[id]/similar` | Yes | Find activities with similar GPS route |
 
 **POST `/api/activities`** (multipart/form-data)
@@ -419,7 +421,7 @@ All endpoints return JSON. Authentication is checked via `await auth()` from `@/
 - Returns 404 if not found or not owned by current user
 
 **GET `/api/activities/compare?ids=id1,id2,id3`**
-- Max 5 activity IDs (comma-separated)
+- Max 20 activity IDs (comma-separated)
 - Returns activities with trackpoints (latitude, longitude, elevation, timestamp, cumulativeDistance, heartRate) for overlay comparison
 
 **GET `/api/activities/[id]/similar?threshold=80&limit=20`**
@@ -438,8 +440,13 @@ All endpoints return JSON. Authentication is checked via `await auth()` from `@/
 | GET | `/api/dashboard/global` | Yes | Global leaderboard |
 
 **GET `/api/dashboard/stats`**
-- Query params: `range` (7d|30d|90d|365d|ytd|all), `type` (optional)
-- Response: `{ summary, weeklyData, monthlySummary, paceTrend, recentActivities }`
+- Query params: `range` (7d|30d|90d|365d|ytd|all|custom), `type` (optional), `from` (YYYY-MM-DD, optional), `to` (YYYY-MM-DD, optional)
+- When `range=custom`, the `from` and `to` params define the date window
+- Recent activities respect the active type and date range filters
+- Response: `{ summary, weeklyData, monthlySummary, paceTrend, recentActivities, bestEfforts }`
+- `weeklyData[].elevation` — total elevation gain per week (meters)
+- `bestEfforts.distances[]` — fastest time for each standard distance (400m, 1K, 5K, 10K, Half Marathon, Marathon) computed via sliding window over trackpoints. Each entry: `{ key, label, meters, time, activityId, activityName }`
+- `bestEfforts.longest` — longest single activity: `{ distance, activityId, activityName }`
 
 **GET `/api/dashboard/global`**
 - Query params: `period` (weekly|monthly|all), `type` (optional)
@@ -590,7 +597,7 @@ Current limits:
 | `registerSchema` | `auth.ts` | Name (2-100), email, password (8-128, upper+lower+digit) |
 | `gpxUploadSchema` | `activity.ts` | Activity type enum + optional name (max 200) |
 | `activityListQuerySchema` | `activity.ts` | Pagination, sorting, type filter |
-| `dashboardStatsQuerySchema` | `activity.ts` | Range (7d/30d/90d/365d/ytd/all) + type filter |
+| `dashboardStatsQuerySchema` | `activity.ts` | Range (7d/30d/90d/365d/ytd/all/custom) + type filter + optional `from`/`to` dates |
 | `globalDashboardQuerySchema` | `activity.ts` | Period (weekly/monthly/all) + type filter |
 | `similarRoutesQuerySchema` | `activity.ts` | Threshold (0-100) + limit (1-100) for route similarity search |
 
@@ -694,15 +701,17 @@ const MapView = dynamic(() => import("./map-view").then(m => m.MapView), {
 ### Charts
 
 All charts use **Recharts**:
-- `components/activities/elevation-chart.tsx` — AreaChart for elevation profile
+- `components/activities/elevation-chart.tsx` — ComposedChart for elevation profile with toggleable pace and heart rate overlays (multi-axis)
 - `components/activities/pace-chart.tsx` — BarChart for per-km splits
 - `components/dashboard/distance-chart.tsx` — BarChart for weekly distance
+- `components/dashboard/elevation-chart.tsx` — BarChart for weekly elevation gain
 - `components/dashboard/pace-trend-chart.tsx` — LineChart for pace over time
 - `components/dashboard/leaderboard-chart.tsx` — BarChart for global rankings
 - `components/dashboard/compare-pace-chart.tsx` — Summary table + average pace BarChart
 - `components/dashboard/compare-pace-along-track-chart.tsx` — LineChart: instantaneous pace vs distance (smoothed, Y-axis reversed)
 - `components/dashboard/compare-elevation-chart.tsx` — LineChart: elevation overlay vs distance
 - `components/dashboard/compare-heart-rate-chart.tsx` — LineChart: heart rate overlay vs distance (hidden when no HR data)
+- `components/dashboard/compare-trend-analysis.tsx` — Pace and HR trend analysis with linear regression lines and improvement insights
 
 ---
 
