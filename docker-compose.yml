@@ -1,0 +1,29 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pacescope
+      POSTGRES_PASSWORD: pacescope_dev
+      POSTGRES_DB: pacescope
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://pacescope:pacescope_dev@db:5432/pacescope
+      NEXTAUTH_URL: ${AUTH_URL:-http://localhost:3000}
+      NEXTAUTH_SECRET: "${AUTH_SECRET:?Set AUTH_SECRET in .env}"
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
