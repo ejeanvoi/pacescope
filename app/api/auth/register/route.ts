@@ -2,9 +2,20 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth/helpers";
 import { registerSchema } from "@/lib/validators/auth";
+import { rateLimit } from "@/lib/rate-limit";
+
+const registerLimiter = rateLimit({ interval: 60_000, limit: 5 });
 
 export async function POST(request: Request) {
   try {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const { success } = registerLimiter.check(ip);
+    if (!success) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        { status: 429 }
+      );
+    }
     const body = await request.json();
     const parsed = registerSchema.safeParse(body);
 
