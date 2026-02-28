@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
       },
     }),
     prisma.activity.findMany({
-      where: { userId },
+      where,
       orderBy: { startDate: "desc" },
       take: 5,
       select: {
