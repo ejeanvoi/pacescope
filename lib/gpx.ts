@@ -58,6 +58,11 @@ function extractHeartRate(extensions: unknown): number | null {
   return null;
 }
 
+function ensureArray<T>(value: T | T[] | undefined): T[] {
+  if (value === undefined || value === null) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
 export function parseGpx(xmlContent: string): ParsedGpxData {
   let parsed: Record<string, unknown>;
   try {
@@ -71,8 +76,8 @@ export function parseGpx(xmlContent: string): ParsedGpxData {
     throw new GpxParseError("Invalid GPX file: missing <gpx> root element");
   }
 
-  const tracks = gpx.trk as Record<string, unknown>[] | undefined;
-  if (!tracks || tracks.length === 0) {
+  const tracks = ensureArray(gpx.trk as Record<string, unknown> | Record<string, unknown>[]);
+  if (tracks.length === 0) {
     throw new GpxParseError("Invalid GPX file: no tracks found");
   }
 
@@ -83,26 +88,33 @@ export function parseGpx(xmlContent: string): ParsedGpxData {
   const trackpoints: TrackPoint[] = [];
 
   for (const trk of tracks) {
-    const segments = trk.trkseg as Record<string, unknown>[] | undefined;
-    if (!segments) continue;
+    const segments = ensureArray(trk.trkseg as Record<string, unknown> | Record<string, unknown>[]);
 
     for (const seg of segments) {
-      const points = seg.trkpt as Record<string, unknown>[] | undefined;
-      if (!points) continue;
+      const points = ensureArray(seg.trkpt as Record<string, unknown> | Record<string, unknown>[]);
 
       for (const pt of points) {
-        const lat = pt["@_lat"];
-        const lon = pt["@_lon"];
+        const rawLat = pt["@_lat"];
+        const rawLon = pt["@_lon"];
 
-        if (typeof lat !== "number" || typeof lon !== "number") continue;
+        // Parse lat/lon - may be number or string depending on parser config
+        const lat = typeof rawLat === "number" ? rawLat : parseFloat(String(rawLat));
+        const lon = typeof rawLon === "number" ? rawLon : parseFloat(String(rawLon));
+
+        if (isNaN(lat) || isNaN(lon)) continue;
         if (lat < -90 || lat > 90 || lon < -180 || lon > 180) continue;
 
+        const rawEle = pt.ele;
         const elevation =
-          typeof pt.ele === "number" ? pt.ele : null;
+          typeof rawEle === "number"
+            ? rawEle
+            : typeof rawEle === "string"
+              ? parseFloat(rawEle) || null
+              : null;
 
         let timestamp: Date | null = null;
         if (pt.time) {
-          const d = new Date(pt.time as string);
+          const d = new Date(String(pt.time));
           if (!isNaN(d.getTime())) timestamp = d;
         }
 
