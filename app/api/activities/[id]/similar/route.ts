@@ -62,8 +62,9 @@ export async function GET(
   }
 
   // 2. SQL pre-filter: distance range + bounding box overlap
-  const distMin = source.distance * 0.5;
-  const distMax = source.distance * 2.0;
+  // Use a tighter range (±30%) to focus on same-course candidates
+  const distMin = source.distance * 0.8;
+  const distMax = source.distance * 1.3;
 
   const candidates = await prisma.activity.findMany({
     where: {
@@ -164,9 +165,11 @@ export async function GET(
     }
   }
 
-  // Sort by date (most recent first)
+  // Sort by similarity descending, then by date (most recent first) as tiebreaker
   results.sort(
-    (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+    (a, b) =>
+      b.similarity - a.similarity ||
+      new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
   );
 
   return NextResponse.json({

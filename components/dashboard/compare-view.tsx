@@ -10,7 +10,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { formatDistance, formatDuration, formatPace } from "@/lib/calculations";
+import { Input } from "@/components/ui/input";
+import { formatDistance, formatPace } from "@/lib/calculations";
 import { ArrowLeft, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CompareMapWrapper } from "./compare-map-wrapper";
@@ -22,6 +23,13 @@ import { SimilarRoutes } from "./similar-routes";
 
 const ROUTE_COLORS = ["#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c"];
 
+const ACTIVITY_TYPES = [
+  { value: "ALL", label: "All" },
+  { value: "RUN", label: "Run" },
+  { value: "TRAIL_RUN", label: "Trail" },
+  { value: "TREADMILL", label: "Treadmill" },
+];
+
 interface ActivitySummary {
   id: string;
   name: string;
@@ -30,6 +38,7 @@ interface ActivitySummary {
   distance: number;
   duration: number;
   averagePace: number | null;
+  elevationGain: number | null;
 }
 
 interface CompareActivity {
@@ -56,11 +65,48 @@ export function CompareView() {
   const [loading, setLoading] = useState(false);
   const [loadingList, setLoadingList] = useState(true);
 
+  // Filter state
+  const [typeFilter, setTypeFilter] = useState("ALL");
+  const [distMinKm, setDistMinKm] = useState("");
+  const [distMaxKm, setDistMaxKm] = useState("");
+  const [elevMinM, setElevMinM] = useState("");
+  const [elevMaxM, setElevMaxM] = useState("");
+
+  const hasFilters =
+    typeFilter !== "ALL" ||
+    distMinKm !== "" ||
+    distMaxKm !== "" ||
+    elevMinM !== "" ||
+    elevMaxM !== "";
+
+  const clearFilters = () => {
+    setTypeFilter("ALL");
+    setDistMinKm("");
+    setDistMaxKm("");
+    setElevMinM("");
+    setElevMaxM("");
+  };
+
+  // Derived filtered list
+  const filteredActivities = allActivities.filter((a) => {
+    if (typeFilter !== "ALL" && a.type !== typeFilter) return false;
+    const distKm = a.distance / 1000;
+    if (distMinKm !== "" && distKm < parseFloat(distMinKm)) return false;
+    if (distMaxKm !== "" && distKm > parseFloat(distMaxKm)) return false;
+    if (elevMinM !== "" && (a.elevationGain ?? 0) < parseFloat(elevMinM))
+      return false;
+    if (elevMaxM !== "" && (a.elevationGain ?? 0) > parseFloat(elevMaxM))
+      return false;
+    return true;
+  });
+
   // Fetch all activities for selection
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch("/api/activities?limit=100&sortBy=startDate&sortOrder=desc");
+        const res = await fetch(
+          "/api/activities?limit=100&sortBy=startDate&sortOrder=desc"
+        );
         if (res.ok) {
           const data = await res.json();
           setAllActivities(data.activities);
@@ -105,6 +151,13 @@ export function CompareView() {
     );
   };
 
+  const addMultipleToCompare = (ids: string[]) => {
+    setSelectedIds((prev) => {
+      const toAdd = ids.filter((id) => !prev.includes(id));
+      return [...prev, ...toAdd].slice(0, 5);
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -129,18 +182,96 @@ export function CompareView() {
           <CardTitle className="text-base">Select Activities</CardTitle>
           <CardDescription>
             {selectedIds.length} of 5 selected
+            {hasFilters &&
+              ` · showing ${filteredActivities.length} of ${allActivities.length}`}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
+          {/* Filters */}
+          <div className="space-y-2">
+            {/* Type filter */}
+            <div className="flex flex-wrap gap-1">
+              {ACTIVITY_TYPES.map((t) => (
+                <button
+                  key={t.value}
+                  onClick={() => setTypeFilter(t.value)}
+                  className={cn(
+                    "rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
+                    typeFilter === t.value
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-muted-foreground/30 hover:bg-muted/50"
+                  )}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Distance + elevation range */}
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span className="shrink-0">Distance (km):</span>
+              <Input
+                type="number"
+                min={0}
+                placeholder="min"
+                value={distMinKm}
+                onChange={(e) => setDistMinKm(e.target.value)}
+                className="h-7 w-20 text-xs"
+              />
+              <span>–</span>
+              <Input
+                type="number"
+                min={0}
+                placeholder="max"
+                value={distMaxKm}
+                onChange={(e) => setDistMaxKm(e.target.value)}
+                className="h-7 w-20 text-xs"
+              />
+              <span className="ml-2 shrink-0">Elevation (m):</span>
+              <Input
+                type="number"
+                min={0}
+                placeholder="min"
+                value={elevMinM}
+                onChange={(e) => setElevMinM(e.target.value)}
+                className="h-7 w-20 text-xs"
+              />
+              <span>–</span>
+              <Input
+                type="number"
+                min={0}
+                placeholder="max"
+                value={elevMaxM}
+                onChange={(e) => setElevMaxM(e.target.value)}
+                className="h-7 w-20 text-xs"
+              />
+              {hasFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="ml-1 text-xs text-muted-foreground underline hover:text-foreground"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Activity list */}
           {loadingList ? (
-            <p className="text-sm text-muted-foreground">Loading activities...</p>
+            <p className="text-sm text-muted-foreground">
+              Loading activities...
+            </p>
           ) : allActivities.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No activities found. Upload a GPX file or sync from Strava.
             </p>
+          ) : filteredActivities.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No activities match the current filters.
+            </p>
           ) : (
             <div className="max-h-64 space-y-1 overflow-y-auto">
-              {allActivities.map((a) => {
+              {filteredActivities.map((a) => {
                 const isSelected = selectedIds.includes(a.id);
                 const colorIdx = selectedIds.indexOf(a.id);
                 return (
@@ -164,7 +295,12 @@ export function CompareView() {
                           }}
                         />
                       )}
-                      <span className={cn("truncate", isSelected && "font-medium")}>
+                      <span
+                        className={cn(
+                          "truncate",
+                          isSelected && "font-medium"
+                        )}
+                      >
                         {a.name}
                       </span>
                       <span className="text-xs text-muted-foreground">
@@ -174,9 +310,12 @@ export function CompareView() {
                         })}
                       </span>
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      {formatDistance(a.distance)}
-                    </span>
+                    <div className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
+                      {a.elevationGain != null && a.elevationGain > 0 && (
+                        <span>↑{Math.round(a.elevationGain)}m</span>
+                      )}
+                      <span>{formatDistance(a.distance)}</span>
+                    </div>
                   </button>
                 );
               })}
@@ -184,7 +323,7 @@ export function CompareView() {
           )}
 
           {selectedIds.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 pt-1">
               {selectedIds.map((id, idx) => {
                 const activity = allActivities.find((a) => a.id === id);
                 return (
@@ -215,7 +354,7 @@ export function CompareView() {
       {selectedIds.length === 1 && (
         <SimilarRoutes
           sourceActivityId={selectedIds[0]}
-          onAddToCompare={(id) => toggleActivity(id)}
+          onAddMultipleToCompare={addMultipleToCompare}
           selectedIds={selectedIds}
         />
       )}
