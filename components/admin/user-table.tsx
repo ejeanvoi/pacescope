@@ -264,7 +264,7 @@ export function UserTable({ currentUserId }: UserTableProps) {
                         <td className="px-4 py-3">
                           {user._count.activities}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3" suppressHydrationWarning>
                           {new Date(user.createdAt).toLocaleDateString()}
                         </td>
                         <td className="px-4 py-3">
