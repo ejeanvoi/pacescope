@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
@@ -53,6 +54,7 @@ interface Pagination {
 interface ActivityListProps {
   initialActivities: ActivitySummary[];
   initialPagination: Pagination;
+  initialCountries: string[];
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -78,12 +80,17 @@ const SORT_OPTIONS = [
 export function ActivityList({
   initialActivities,
   initialPagination,
+  initialCountries,
 }: ActivityListProps) {
   const router = useRouter();
   const [activities, setActivities] =
     useState<ActivitySummary[]>(initialActivities);
   const [pagination, setPagination] = useState<Pagination>(initialPagination);
   const [typeFilter, setTypeFilter] = useState("");
+  const [countryFilter, setCountryFilter] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [countries, setCountries] = useState<string[]>(initialCountries);
   const [sortBy, setSortBy] = useState("startDate");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [loading, setLoading] = useState(false);
@@ -93,7 +100,10 @@ export function ActivityList({
     page: number,
     type: string,
     sort: string,
-    order: string
+    order: string,
+    country: string = countryFilter,
+    from: string = dateFrom,
+    to: string = dateTo
   ) => {
     setLoading(true);
     try {
@@ -104,12 +114,16 @@ export function ActivityList({
         sortOrder: order,
       });
       if (type) params.set("type", type);
+      if (country) params.set("country", country);
+      if (from) params.set("from", from);
+      if (to) params.set("to", to);
 
       const res = await fetch(`/api/activities?${params}`);
       const data = await res.json();
       if (res.ok) {
         setActivities(data.activities);
         setPagination(data.pagination);
+        if (data.countries) setCountries(data.countries);
       }
     } finally {
       setLoading(false);
@@ -119,6 +133,21 @@ export function ActivityList({
   const handleTypeFilter = (type: string) => {
     setTypeFilter(type);
     fetchActivities(1, type, sortBy, sortOrder);
+  };
+
+  const handleCountryFilter = (country: string) => {
+    setCountryFilter(country);
+    fetchActivities(1, typeFilter, sortBy, sortOrder, country);
+  };
+
+  const handleDateFromChange = (from: string) => {
+    setDateFrom(from);
+    fetchActivities(1, typeFilter, sortBy, sortOrder, countryFilter, from, dateTo);
+  };
+
+  const handleDateToChange = (to: string) => {
+    setDateTo(to);
+    fetchActivities(1, typeFilter, sortBy, sortOrder, countryFilter, dateFrom, to);
   };
 
   const handleSort = (sort: string) => {
@@ -153,18 +182,27 @@ export function ActivityList({
           <MapPin className="mb-4 h-12 w-12 text-muted-foreground" />
           <h3 className="mb-2 text-lg font-semibold">No activities found</h3>
           <p className="mb-4 text-sm text-muted-foreground">
-            {typeFilter
-              ? "No activities match this filter. Try a different type."
+            {typeFilter || countryFilter || dateFrom || dateTo
+              ? "No activities match your filters."
               : "Get started by uploading a GPX file."}
           </p>
-          {!typeFilter && (
+          {!typeFilter && !countryFilter && !dateFrom && !dateTo && (
             <Link href="/activities/upload">
               <Button>Upload GPX</Button>
             </Link>
           )}
-          {typeFilter && (
-            <Button variant="outline" onClick={() => handleTypeFilter("")}>
-              Clear Filter
+          {(typeFilter || countryFilter || dateFrom || dateTo) && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                setTypeFilter("");
+                setCountryFilter("");
+                setDateFrom("");
+                setDateTo("");
+                fetchActivities(1, "", sortBy, sortOrder, "", "", "");
+              }}
+            >
+              Clear Filters
             </Button>
           )}
         </CardContent>
@@ -188,6 +226,46 @@ export function ActivityList({
             </Button>
           ))}
         </div>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => handleDateFromChange(e.target.value)}
+            className={cn(
+              "h-8 w-[130px] text-xs",
+              dateFrom && "ring-1 ring-primary/30"
+            )}
+          />
+          <span>to</span>
+          <Input
+            type="date"
+            value={dateTo}
+            onChange={(e) => handleDateToChange(e.target.value)}
+            className={cn(
+              "h-8 w-[130px] text-xs",
+              dateTo && "ring-1 ring-primary/30"
+            )}
+          />
+        </div>
+        {countries.length > 0 && (
+          <select
+            value={countryFilter}
+            onChange={(e) => handleCountryFilter(e.target.value)}
+            className={cn(
+              "h-9 rounded-md border bg-background px-3 text-sm transition-colors",
+              countryFilter
+                ? "border-primary text-foreground"
+                : "text-muted-foreground"
+            )}
+          >
+            <option value="">All Countries</option>
+            {countries.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        )}
         <div className="ml-auto flex gap-1">
           {SORT_OPTIONS.map((s) => (
             <Button

@@ -91,6 +91,7 @@ interface DashboardData {
       activityName: string | null;
     };
   };
+  countries: string[];
 }
 
 function formatEffortTime(seconds: number): string {
@@ -112,6 +113,7 @@ export function DashboardView({ userName }: DashboardViewProps) {
   const [type, setType] = useState("");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
+  const [country, setCountry] = useState("");
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -124,6 +126,7 @@ export function DashboardView({ userName }: DashboardViewProps) {
         if (customFrom) params.set("from", customFrom);
         if (customTo) params.set("to", customTo);
       }
+      if (country) params.set("country", country);
       const res = await fetch(`/api/dashboard/stats?${params}`);
       if (res.ok) {
         setData(await res.json());
@@ -131,7 +134,7 @@ export function DashboardView({ userName }: DashboardViewProps) {
     } finally {
       setLoading(false);
     }
-  }, [range, type, customFrom, customTo]);
+  }, [range, type, customFrom, customTo, country]);
 
   useEffect(() => {
     fetchData();
@@ -166,10 +169,13 @@ export function DashboardView({ userName }: DashboardViewProps) {
         type={type}
         customFrom={customFrom}
         customTo={customTo}
+        country={country}
+        countries={data?.countries ?? []}
         onRangeChange={setRange}
         onTypeChange={setType}
         onCustomFromChange={setCustomFrom}
         onCustomToChange={setCustomTo}
+        onCountryChange={setCountry}
       />
 
       <div

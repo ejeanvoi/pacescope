@@ -24,10 +24,13 @@ interface DashboardFiltersProps {
   type: string;
   customFrom: string;
   customTo: string;
+  country: string;
+  countries: string[];
   onRangeChange: (range: string) => void;
   onTypeChange: (type: string) => void;
   onCustomFromChange: (from: string) => void;
   onCustomToChange: (to: string) => void;
+  onCountryChange: (country: string) => void;
 }
 
 export function DashboardFilters({
@@ -35,10 +38,13 @@ export function DashboardFilters({
   type,
   customFrom,
   customTo,
+  country,
+  countries,
   onRangeChange,
   onTypeChange,
   onCustomFromChange,
   onCustomToChange,
+  onCountryChange,
 }: DashboardFiltersProps) {
   const isCustom = range === "custom";
 
@@ -119,6 +125,25 @@ export function DashboardFilters({
           </button>
         ))}
       </div>
+      {countries.length > 0 && (
+        <select
+          value={country}
+          onChange={(e) => onCountryChange(e.target.value)}
+          className={cn(
+            "h-9 rounded-md border bg-background px-3 text-sm transition-colors",
+            country
+              ? "border-primary text-foreground"
+              : "text-muted-foreground"
+          )}
+        >
+          <option value="">All Countries</option>
+          {countries.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
+      )}
     </div>
   );
 }
