@@ -186,10 +186,15 @@ export async function GET(request: NextRequest) {
 
   const { page, limit, sortBy, sortOrder, type, country } = parsed.data;
 
+  const dateFilter: Record<string, Date> = {};
+  if (parsed.data.from) dateFilter.gte = new Date(parsed.data.from + "T00:00:00");
+  if (parsed.data.to) dateFilter.lte = new Date(parsed.data.to + "T23:59:59.999");
+
   const where = {
     userId: session.user.id,
     ...(type ? { type: type as ActivityType } : {}),
     ...(country ? { location: { endsWith: `, ${country}` } } : {}),
+    ...(Object.keys(dateFilter).length > 0 ? { startDate: dateFilter } : {}),
   };
 
   const [activities, total, locationRows] = await Promise.all([
