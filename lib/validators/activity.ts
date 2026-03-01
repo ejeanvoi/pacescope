@@ -14,6 +14,8 @@ export const activityListQuerySchema = z.object({
   sortOrder: z.enum(["asc", "desc"]).default("desc"),
   type: z.enum(["RUN", "TRAIL_RUN", "TREADMILL"]).optional(),
   country: z.string().max(100).optional(),
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 export const dashboardStatsQuerySchema = z.object({
