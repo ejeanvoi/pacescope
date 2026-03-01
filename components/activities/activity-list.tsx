@@ -27,6 +27,7 @@ import {
   formatDuration,
   formatDistance,
 } from "@/lib/calculations";
+import { ACTIVITY_TYPE_LABELS, ACTIVITY_TYPE_OPTIONS } from "@/lib/constants";
 
 interface ActivitySummary {
   id: string;
@@ -57,17 +58,9 @@ interface ActivityListProps {
   initialCountries: string[];
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  RUN: "Run",
-  TRAIL_RUN: "Trail Run",
-  TREADMILL: "Treadmill",
-};
-
 const TYPE_FILTERS = [
   { value: "", label: "All" },
-  { value: "RUN", label: "Run" },
-  { value: "TRAIL_RUN", label: "Trail Run" },
-  { value: "TREADMILL", label: "Treadmill" },
+  ...ACTIVITY_TYPE_OPTIONS,
 ];
 
 const SORT_OPTIONS = [
@@ -307,7 +300,7 @@ export function ActivityList({
                   </CardTitle>
                   <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
                     <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                      {TYPE_LABELS[activity.type] || activity.type}
+                      {ACTIVITY_TYPE_LABELS[activity.type] || activity.type}
                     </span>
                     <span>
                       {new Date(activity.startDate).toLocaleDateString(

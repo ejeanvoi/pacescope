@@ -11,13 +11,7 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatPace } from "@/lib/calculations";
-
-const ROUTE_COLORS = [
-  "#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c",
-  "#0891b2", "#be185d", "#854d0e", "#4f46e5", "#059669",
-  "#e11d48", "#7c3aed", "#ca8a04", "#0d9488", "#c2410c",
-  "#6366f1", "#15803d", "#b91c1c", "#7e22ce", "#0e7490",
-];
+import { ROUTE_COLORS } from "@/lib/constants";
 
 const MIN_PACE = 90; // 1:30/km — faster than world records
 const MAX_PACE = 900; // 15:00/km — very slow walk

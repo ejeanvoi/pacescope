@@ -10,13 +10,7 @@ import {
   Legend,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-const ROUTE_COLORS = [
-  "#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c",
-  "#0891b2", "#be185d", "#854d0e", "#4f46e5", "#059669",
-  "#e11d48", "#7c3aed", "#ca8a04", "#0d9488", "#c2410c",
-  "#6366f1", "#15803d", "#b91c1c", "#7e22ce", "#0e7490",
-];
+import { ROUTE_COLORS } from "@/lib/constants";
 
 interface CompareElevationChartProps {
   activities: Array<{
