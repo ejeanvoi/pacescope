@@ -11,14 +11,21 @@ export const ROUTE_COLORS = [
 
 // ─── Activity Types ─────────────────────────────────────────────
 
+export const ACTIVITY_TYPE_VALUES = ["RUN", "TRAIL_RUN", "TREADMILL"] as const;
+
 export const ACTIVITY_TYPE_OPTIONS = [
   { value: "RUN", label: "Run" },
   { value: "TRAIL_RUN", label: "Trail Run" },
   { value: "TREADMILL", label: "Treadmill" },
 ] as const;
 
-export const ACTIVITY_TYPE_LABELS: Record<string, string> = {
-  RUN: "Run",
-  TRAIL_RUN: "Trail Run",
-  TREADMILL: "Treadmill",
-};
+export const ACTIVITY_TYPE_LABELS: Record<string, string> =
+  Object.fromEntries(ACTIVITY_TYPE_OPTIONS.map(({ value, label }) => [value, label]));
+
+// ─── Compare View ───────────────────────────────────────────────
+
+export const MAX_COMPARE_ACTIVITIES = 20;
+
+// ─── File Upload ────────────────────────────────────────────────
+
+export const GPX_MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB

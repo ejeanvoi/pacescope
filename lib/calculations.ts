@@ -93,7 +93,7 @@ export function calculateElevation(points: TrackPoint[]): {
 
 export function calculateDuration(points: TrackPoint[]): number | null {
   const first = points.find((p) => p.timestamp != null);
-  const last = [...points].reverse().find((p) => p.timestamp != null);
+  const last = points.findLast((p) => p.timestamp != null);
   if (!first?.timestamp || !last?.timestamp) return null;
   return (last.timestamp.getTime() - first.timestamp.getTime()) / 1000;
 }
@@ -118,7 +118,7 @@ export function calculateHeartRateStats(points: TrackPoint[]): {
   if (hrPoints.length === 0) return { averageHeartRate: null, maxHeartRate: null };
 
   const sum = hrPoints.reduce((s, p) => s + p.heartRate!, 0);
-  const max = Math.max(...hrPoints.map((p) => p.heartRate!));
+  const max = hrPoints.reduce((m, p) => Math.max(m, p.heartRate!), -Infinity);
   return {
     averageHeartRate: Math.round(sum / hrPoints.length),
     maxHeartRate: max,
@@ -261,4 +261,34 @@ export function formatDuration(seconds: number): string {
 export function formatDistance(meters: number): string {
   if (!meters || meters <= 0) return "0.00 km";
   return `${(meters / 1000).toFixed(2)} km`;
+}
+
+export function formatWeekLabel(weekStart: string): string {
+  const date = new Date(weekStart + "T00:00:00");
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+export function formatEffortTime(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.round(seconds % 60);
+  if (h > 0) {
+    return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  }
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+export function extractCountries(
+  locationRows: Array<{ location: string | null }>
+): string[] {
+  return [
+    ...new Set(
+      locationRows
+        .map((r) => {
+          const parts = r.location?.split(", ");
+          return parts && parts.length >= 2 ? parts[parts.length - 1] : null;
+        })
+        .filter((c): c is string => c != null)
+    ),
+  ].sort((a, b) => a.localeCompare(b));
 }

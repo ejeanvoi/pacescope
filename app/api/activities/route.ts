@@ -14,8 +14,9 @@ import {
 import {
   gpxUploadSchema,
   activityListQuerySchema,
-  GPX_MAX_FILE_SIZE,
 } from "@/lib/validators/activity";
+import { GPX_MAX_FILE_SIZE } from "@/lib/constants";
+import { extractCountries } from "@/lib/calculations";
 import { computeRouteFingerprint } from "@/lib/route-similarity";
 import { reverseGeocode } from "@/lib/geocoding";
 import type { ActivityType, ActivitySource } from "@/generated/prisma/client";
@@ -227,16 +228,7 @@ export async function GET(request: NextRequest) {
     }),
   ]);
 
-  const countries = [
-    ...new Set(
-      locationRows
-        .map((r) => {
-          const parts = r.location?.split(", ");
-          return parts && parts.length >= 2 ? parts[parts.length - 1] : null;
-        })
-        .filter((c): c is string => c != null)
-    ),
-  ].sort((a, b) => a.localeCompare(b));
+  const countries = extractCountries(locationRows);
 
   return NextResponse.json({
     activities,

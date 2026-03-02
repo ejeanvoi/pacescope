@@ -71,10 +71,13 @@ export function CompareTrendAnalysis({
       new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
   );
 
+  // Build a lookup from activity id → sorted index for O(1) color assignment
+  const sortedIndexMap = new Map(sorted.map((a, i) => [a.id, i]));
+
   // ─── Pace trend data ────────────────────────────────────────
   const paceData = sorted
     .filter((a) => a.averagePace != null && a.averagePace > 0)
-    .map((a, _i, arr) => {
+    .map((a) => {
       const date = new Date(a.startDate);
       return {
         name: a.name,
@@ -85,13 +88,13 @@ export function CompareTrendAnalysis({
           year: "2-digit",
         }),
         pace: Math.round(a.averagePace!),
-        color: ROUTE_COLORS[sorted.indexOf(a) % ROUTE_COLORS.length],
+        color: ROUTE_COLORS[sortedIndexMap.get(a.id)! % ROUTE_COLORS.length],
       };
     });
 
   // ─── Heart rate trend data ──────────────────────────────────
   const hrData = sorted
-    .map((a) => {
+    .map((a, i) => {
       const avgHR = computeAvgHR(a);
       if (avgHR == null) return null;
       const date = new Date(a.startDate);
@@ -104,7 +107,7 @@ export function CompareTrendAnalysis({
           year: "2-digit",
         }),
         hr: avgHR,
-        color: ROUTE_COLORS[sorted.indexOf(a) % ROUTE_COLORS.length],
+        color: ROUTE_COLORS[i % ROUTE_COLORS.length],
       };
     })
     .filter(Boolean) as Array<{
@@ -126,47 +129,6 @@ export function CompareTrendAnalysis({
   const hrRegression =
     hrData.length >= 2
       ? linearRegression(hrData.map((p) => ({ x: p.date, y: p.hr })))
-      : null;
-
-  // Compute trend line endpoints for pace
-  const paceTrendLine =
-    paceRegression && paceData.length >= 2
-      ? [
-          {
-            date: paceData[0].date,
-            dateLabel: paceData[0].dateLabel,
-            trend:
-              paceRegression.slope * paceData[0].date +
-              paceRegression.intercept,
-          },
-          {
-            date: paceData[paceData.length - 1].date,
-            dateLabel: paceData[paceData.length - 1].dateLabel,
-            trend:
-              paceRegression.slope * paceData[paceData.length - 1].date +
-              paceRegression.intercept,
-          },
-        ]
-      : null;
-
-  // Compute trend line endpoints for HR
-  const hrTrendLine =
-    hrRegression && hrData.length >= 2
-      ? [
-          {
-            date: hrData[0].date,
-            dateLabel: hrData[0].dateLabel,
-            trend:
-              hrRegression.slope * hrData[0].date + hrRegression.intercept,
-          },
-          {
-            date: hrData[hrData.length - 1].date,
-            dateLabel: hrData[hrData.length - 1].dateLabel,
-            trend:
-              hrRegression.slope * hrData[hrData.length - 1].date +
-              hrRegression.intercept,
-          },
-        ]
       : null;
 
   // ─── Summaries ──────────────────────────────────────────────

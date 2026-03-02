@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatWeekLabel } from "@/lib/calculations";
 
 interface WeeklyDataPoint {
   weekStart: string;
@@ -78,9 +79,4 @@ export function ElevationChart({ data }: ElevationChartProps) {
       </CardContent>
     </Card>
   );
-}
-
-function formatWeekLabel(weekStart: string): string {
-  const date = new Date(weekStart + "T00:00:00");
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }

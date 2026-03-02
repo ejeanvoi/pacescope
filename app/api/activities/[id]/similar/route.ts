@@ -5,9 +5,9 @@ import { similarRoutesQuerySchema } from "@/lib/validators/activity";
 import {
   normalizeRoute,
   computeRouteSimilarity,
+  BBOX_PADDING_DEG,
 } from "@/lib/route-similarity";
 
-const BBOX_PADDING = 0.002; // ~200m in degrees
 const MAX_CANDIDATES = 200;
 
 export async function GET(
@@ -74,10 +74,10 @@ export async function GET(
       // Bounding box overlap filter (with padding)
       AND: [
         { boundingBoxMinLat: { not: null } },
-        { boundingBoxMinLat: { lte: source.boundingBoxMaxLat! + BBOX_PADDING } },
-        { boundingBoxMaxLat: { gte: source.boundingBoxMinLat! - BBOX_PADDING } },
-        { boundingBoxMinLon: { lte: source.boundingBoxMaxLon! + BBOX_PADDING } },
-        { boundingBoxMaxLon: { gte: source.boundingBoxMinLon! - BBOX_PADDING } },
+        { boundingBoxMinLat: { lte: source.boundingBoxMaxLat! + BBOX_PADDING_DEG } },
+        { boundingBoxMaxLat: { gte: source.boundingBoxMinLat! - BBOX_PADDING_DEG } },
+        { boundingBoxMinLon: { lte: source.boundingBoxMaxLon! + BBOX_PADDING_DEG } },
+        { boundingBoxMaxLon: { gte: source.boundingBoxMinLon! - BBOX_PADDING_DEG } },
       ],
     },
     select: {
