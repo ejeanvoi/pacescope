@@ -20,12 +20,10 @@ interface LeaderboardEntry {
 
 interface LeaderboardDistanceChartProps {
   leaderboard: LeaderboardEntry[];
-  period: string;
 }
 
 export function LeaderboardDistanceChart({
   leaderboard,
-  period,
 }: LeaderboardDistanceChartProps) {
   if (leaderboard.length === 0) {
     return (

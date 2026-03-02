@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { dashboardStatsQuerySchema } from "@/lib/validators/activity";
+import { extractCountries } from "@/lib/calculations";
 import type { ActivityType } from "@/generated/prisma/client";
 
 export async function GET(request: NextRequest) {
@@ -124,17 +125,7 @@ export async function GET(request: NextRequest) {
       distance: a.distance,
     }));
 
-  // Extract distinct countries from location strings ("City, Country" → "Country")
-  const countries = [
-    ...new Set(
-      locationRows
-        .map((r) => {
-          const parts = r.location?.split(", ");
-          return parts && parts.length >= 2 ? parts[parts.length - 1] : null;
-        })
-        .filter((c): c is string => c != null)
-    ),
-  ].sort((a, b) => a.localeCompare(b));
+  const countries = extractCountries(locationRows);
 
   // Calculate running streak and best efforts in parallel
   const [streak, bestEfforts] = await Promise.all([

@@ -20,6 +20,7 @@ import {
   computeCumulativeDistances,
   type TrackPoint,
 } from "@/lib/calculations";
+import { ACTIVITY_TYPE_LABELS } from "@/lib/constants";
 import {
   ArrowLeft,
   MapPin,
@@ -28,12 +29,6 @@ import {
   Mountain,
   Heart,
 } from "lucide-react";
-
-const TYPE_LABELS: Record<string, string> = {
-  RUN: "Run",
-  TRAIL_RUN: "Trail Run",
-  TREADMILL: "Treadmill",
-};
 
 export default async function ActivityDetailPage({
   params,
@@ -129,7 +124,7 @@ export default async function ActivityDetailPage({
           </h1>
           <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
             <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-              {TYPE_LABELS[activity.type] || activity.type}
+              {ACTIVITY_TYPE_LABELS[activity.type] || activity.type}
             </span>
             <span>
               {activity.startDate.toLocaleDateString(undefined, {

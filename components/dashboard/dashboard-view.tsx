@@ -13,6 +13,7 @@ import {
   formatPace,
   formatDuration,
   formatDistance,
+  formatEffortTime,
 } from "@/lib/calculations";
 import {
   Activity,
@@ -23,17 +24,12 @@ import {
   Trophy,
   TrendingUp,
 } from "lucide-react";
+import { ACTIVITY_TYPE_LABELS } from "@/lib/constants";
 import { DashboardFilters } from "./dashboard-filters";
 import { DistanceChart } from "./distance-chart";
 import { ElevationChart } from "./elevation-chart";
 import { PaceTrendChart } from "./pace-trend-chart";
 import { MonthlySummary } from "./monthly-summary";
-
-const TYPE_LABELS: Record<string, string> = {
-  RUN: "Run",
-  TRAIL_RUN: "Trail Run",
-  TREADMILL: "Treadmill",
-};
 
 interface DashboardData {
   summary: {
@@ -92,16 +88,6 @@ interface DashboardData {
     };
   };
   countries: string[];
-}
-
-function formatEffortTime(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.round(seconds % 60);
-  if (h > 0) {
-    return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-  }
-  return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
 interface DashboardViewProps {
@@ -395,7 +381,7 @@ export function DashboardView({ userName }: DashboardViewProps) {
                         <p className="truncate font-medium">{a.name}</p>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <span className="inline-flex items-center rounded bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">
-                            {TYPE_LABELS[a.type] || a.type}
+                            {ACTIVITY_TYPE_LABELS[a.type] || a.type}
                           </span>
                           <span>
                             {new Date(a.startDate).toLocaleDateString(

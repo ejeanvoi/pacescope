@@ -8,6 +8,7 @@ import {
   isRunningActivity,
   mapStravaActivityType,
   convertStravaToTrackPoints,
+  STRAVA_PAGE_SIZE,
 } from "@/lib/strava";
 import {
   computeCumulativeDistances,
@@ -187,8 +188,7 @@ export async function POST() {
         synced++;
       }
 
-      // Strava returns max 50 per page; if less, we're done
-      if (activities.length < 50) {
+      if (activities.length < STRAVA_PAGE_SIZE) {
         hasMore = false;
       } else {
         page++;

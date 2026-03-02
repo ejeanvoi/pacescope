@@ -50,15 +50,47 @@ export interface StravaStreams {
 // ─── Constants ──────────────────────────────────────────────────────
 
 const STRAVA_BASE_URL = "https://www.strava.com";
-const STRAVA_API_URL = "https://www.strava.com/api/v3";
+const STRAVA_API_URL = `${STRAVA_BASE_URL}/api/v3`;
+const TOKEN_EXPIRY_BUFFER_SECONDS = 60;
+export const STRAVA_OAUTH_SCOPE = "read,activity:read_all";
+export const STRAVA_PAGE_SIZE = 50;
+
+// ─── Helpers ────────────────────────────────────────────────────────
+
+function getStravaCredentials() {
+  const clientId = process.env.STRAVA_CLIENT_ID;
+  const clientSecret = process.env.STRAVA_CLIENT_SECRET;
+  if (!clientId) throw new Error("STRAVA_CLIENT_ID is not set");
+  if (!clientSecret) throw new Error("STRAVA_CLIENT_SECRET is not set");
+  return { clientId, clientSecret };
+}
+
+async function postStravaToken(
+  body: Record<string, string>
+): Promise<StravaTokenResponse> {
+  const { clientId, clientSecret } = getStravaCredentials();
+  const res = await fetch(`${STRAVA_BASE_URL}/oauth/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      client_id: clientId,
+      client_secret: clientSecret,
+      ...body,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Strava token request failed: ${res.status} ${text}`);
+  }
+
+  return res.json();
+}
 
 // ─── OAuth URL ──────────────────────────────────────────────────────
 
 export function getAuthorizationUrl(state: string): string {
-  const clientId = process.env.STRAVA_CLIENT_ID;
-  if (!clientId) {
-    throw new Error("STRAVA_CLIENT_ID is not set");
-  }
+  const { clientId } = getStravaCredentials();
 
   const redirectUri = `${process.env.AUTH_URL}/api/strava/callback`;
   const params = new URLSearchParams({
@@ -66,7 +98,7 @@ export function getAuthorizationUrl(state: string): string {
     response_type: "code",
     redirect_uri: redirectUri,
     approval_prompt: "auto",
-    scope: "read,activity:read_all",
+    scope: STRAVA_OAUTH_SCOPE,
     state,
   });
 
@@ -78,23 +110,7 @@ export function getAuthorizationUrl(state: string): string {
 export async function exchangeToken(
   code: string
 ): Promise<StravaTokenResponse> {
-  const res = await fetch(`${STRAVA_BASE_URL}/oauth/token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      client_id: process.env.STRAVA_CLIENT_ID,
-      client_secret: process.env.STRAVA_CLIENT_SECRET,
-      code,
-      grant_type: "authorization_code",
-    }),
-  });
-
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Strava token exchange failed: ${res.status} ${body}`);
-  }
-
-  return res.json();
+  return postStravaToken({ code, grant_type: "authorization_code" });
 }
 
 // ─── Token Refresh ──────────────────────────────────────────────────
@@ -102,23 +118,7 @@ export async function exchangeToken(
 export async function refreshAccessToken(
   refreshToken: string
 ): Promise<StravaTokenResponse> {
-  const res = await fetch(`${STRAVA_BASE_URL}/oauth/token`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      client_id: process.env.STRAVA_CLIENT_ID,
-      client_secret: process.env.STRAVA_CLIENT_SECRET,
-      refresh_token: refreshToken,
-      grant_type: "refresh_token",
-    }),
-  });
-
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Strava token refresh failed: ${res.status} ${body}`);
-  }
-
-  return res.json();
+  return postStravaToken({ refresh_token: refreshToken, grant_type: "refresh_token" });
 }
 
 // ─── Get Valid Access Token ─────────────────────────────────────────
@@ -131,8 +131,7 @@ export async function getValidAccessToken(connection: {
 }): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
 
-  // Token still valid (with 60s buffer)
-  if (connection.expiresAt > now + 60) {
+  if (connection.expiresAt > now + TOKEN_EXPIRY_BUFFER_SECONDS) {
     return decrypt(connection.accessToken);
   }
 
@@ -159,7 +158,7 @@ export async function fetchActivities(
   accessToken: string,
   after?: number,
   page: number = 1,
-  perPage: number = 50
+  perPage: number = STRAVA_PAGE_SIZE
 ): Promise<StravaActivity[]> {
   const params = new URLSearchParams({
     page: page.toString(),

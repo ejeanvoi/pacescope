@@ -29,7 +29,6 @@ model User {
   activities       Activity[]
   stravaConnection StravaConnection?
 
-  @@index([email])
   @@index([role])
 }
 

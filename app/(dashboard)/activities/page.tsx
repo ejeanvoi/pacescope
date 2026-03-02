@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { extractCountries } from "@/lib/calculations";
 import { ActivityList } from "@/components/activities/activity-list";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -41,16 +42,7 @@ export default async function ActivitiesPage() {
     }),
   ]);
 
-  const countries = [
-    ...new Set(
-      locationRows
-        .map((r) => {
-          const parts = r.location?.split(", ");
-          return parts && parts.length >= 2 ? parts[parts.length - 1] : null;
-        })
-        .filter((c): c is string => c != null)
-    ),
-  ].sort((a, b) => a.localeCompare(b));
+  const countries = extractCountries(locationRows);
 
   // Serialize dates for client component
   const serialized = activities.map((a) => ({

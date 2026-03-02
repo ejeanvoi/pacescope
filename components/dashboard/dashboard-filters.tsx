@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { ACTIVITY_TYPE_OPTIONS } from "@/lib/constants";
 import { Input } from "@/components/ui/input";
 
 const TIME_RANGES = [
@@ -14,9 +15,7 @@ const TIME_RANGES = [
 
 const ACTIVITY_TYPES = [
   { value: "", label: "All Types" },
-  { value: "RUN", label: "Run" },
-  { value: "TRAIL_RUN", label: "Trail Run" },
-  { value: "TREADMILL", label: "Treadmill" },
+  ...ACTIVITY_TYPE_OPTIONS,
 ] as const;
 
 interface DashboardFiltersProps {
