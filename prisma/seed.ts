@@ -1,4 +1,4 @@
-process.loadEnvFile();
+try { process.loadEnvFile(); } catch { /* env vars provided by container environment */ }
 
 import { PrismaClient } from "../generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
