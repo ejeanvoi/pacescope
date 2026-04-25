@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { CompareMapWrapper } from "./compare-map-wrapper";
 import { CompareElevationChart } from "./compare-elevation-chart";
 import { ComparePaceChart } from "./compare-pace-chart";
+import { SimilarRoutes } from "./similar-routes";
 
 const ROUTE_COLORS = ["#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c"];
 
@@ -206,8 +207,17 @@ export function CompareView() {
         </CardContent>
       </Card>
 
+      {/* Similar routes finder — shown when exactly 1 activity selected */}
+      {selectedIds.length === 1 && (
+        <SimilarRoutes
+          sourceActivityId={selectedIds[0]}
+          onAddToCompare={(id) => toggleActivity(id)}
+          selectedIds={selectedIds}
+        />
+      )}
+
       {/* Comparison results */}
-      {selectedIds.length < 2 && (
+      {selectedIds.length < 2 && selectedIds.length !== 1 && (
         <p className="text-center text-sm text-muted-foreground">
           Select at least 2 activities to compare.
         </p>
