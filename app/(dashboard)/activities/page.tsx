@@ -1,15 +1,47 @@
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+import { ActivityList } from "@/components/activities/activity-list";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Upload } from "lucide-react";
 
-export default function ActivitiesPage() {
+export default async function ActivitiesPage() {
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
+  const limit = 20;
+
+  const [activities, total] = await Promise.all([
+    prisma.activity.findMany({
+      where: { userId: session.user.id },
+      orderBy: { startDate: "desc" },
+      take: limit,
+      select: {
+        id: true,
+        type: true,
+        source: true,
+        name: true,
+        startDate: true,
+        duration: true,
+        distance: true,
+        elevationGain: true,
+        averagePace: true,
+        bestPace: true,
+        averageHeartRate: true,
+        createdAt: true,
+      },
+    }),
+    prisma.activity.count({ where: { userId: session.user.id } }),
+  ]);
+
+  // Serialize dates for client component
+  const serialized = activities.map((a) => ({
+    ...a,
+    startDate: a.startDate.toISOString(),
+    createdAt: a.createdAt.toISOString(),
+  }));
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -27,19 +59,15 @@ export default function ActivitiesPage() {
         </Link>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Your Activities</CardTitle>
-          <CardDescription>
-            Upload a GPX file or sync from Strava to see your activities here
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            No activities found. Get started by uploading a GPX file.
-          </p>
-        </CardContent>
-      </Card>
+      <ActivityList
+        initialActivities={serialized}
+        initialPagination={{
+          page: 1,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        }}
+      />
     </div>
   );
 }
