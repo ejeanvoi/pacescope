@@ -131,7 +131,7 @@ export function StravaManager({
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Last Synced</span>
-                <span>
+                <span suppressHydrationWarning>
                   {lastSyncAt
                     ? new Date(lastSyncAt).toLocaleString()
                     : "Never"}
