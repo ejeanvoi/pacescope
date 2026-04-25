@@ -403,6 +403,7 @@ All endpoints return JSON. Authentication is checked via `await auth()` from `@/
 | GET | `/api/activities/[id]` | Yes | Activity detail with trackpoints |
 | DELETE | `/api/activities/[id]` | Yes | Delete activity |
 | GET | `/api/activities/compare` | Yes | Compare up to 5 activities |
+| GET | `/api/activities/[id]/similar` | Yes | Find activities with similar GPS route |
 
 **POST `/api/activities`** (multipart/form-data)
 - Fields: `file` (.gpx, max 10MB), `type` (RUN|TRAIL_RUN|TREADMILL), `name` (optional)
@@ -419,7 +420,15 @@ All endpoints return JSON. Authentication is checked via `await auth()` from `@/
 
 **GET `/api/activities/compare?ids=id1,id2,id3`**
 - Max 5 activity IDs (comma-separated)
-- Returns activities with trackpoints for overlay comparison
+- Returns activities with trackpoints (latitude, longitude, elevation, timestamp, cumulativeDistance, heartRate) for overlay comparison
+
+**GET `/api/activities/[id]/similar?threshold=80&limit=20`**
+- Finds activities with a similar GPS route using two-phase search:
+  1. SQL pre-filter: distance range (50%-200%) + bounding box overlap
+  2. Detailed comparison: resample to 50 equidistant points, symmetric average minimum distance
+- Query params: `threshold` (0-100, default 80), `limit` (1-100, default 20)
+- Returns: `{ similar: [{ id, name, distance, duration, averagePace, startDate, type, similarity }] }` sorted by date (most recent first)
+- Requires activity to have GPS data (returns 400 for treadmill activities)
 
 ### Dashboard
 
@@ -583,6 +592,29 @@ Current limits:
 | `activityListQuerySchema` | `activity.ts` | Pagination, sorting, type filter |
 | `dashboardStatsQuerySchema` | `activity.ts` | Range (7d/30d/90d/365d/ytd/all) + type filter |
 | `globalDashboardQuerySchema` | `activity.ts` | Period (weekly/monthly/all) + type filter |
+| `similarRoutesQuerySchema` | `activity.ts` | Threshold (0-100) + limit (1-100) for route similarity search |
+
+### `lib/route-similarity.ts` — Route Similarity
+
+Computes GPS route similarity between activities. Used by the "Find Similar Routes" feature on the compare page.
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `computeRouteFingerprint` | `(points) → RouteFingerprint \| null` | Bounding box + start point from GPS points. Stored on Activity at upload/sync time for fast SQL pre-filtering |
+| `normalizeRoute` | `(points, sampleCount=50) → SamplePoint[]` | Resamples a route to N equidistant points via linear interpolation on `cumulativeDistance` |
+| `computeRouteSimilarity` | `(samplesA, samplesB, tolerance=200) → number` | Symmetric average minimum distance, returns 0-100% similarity |
+| `boundingBoxesOverlap` | `(a, b) → boolean` | Checks if two bounding boxes overlap (with ~200m padding) |
+
+**Algorithm:**
+- For each point on route A, find the closest point on route B (and vice versa)
+- Take the worse of the two average-minimum-distances (Hausdorff-like)
+- Convert to percentage: `similarity = max(0, 100 * (1 - worstAvg / toleranceMeters))`
+- Rotation-invariant: same loop with different start points scores high
+- Handles out-and-back routes, tolerates GPS noise
+
+**Route fingerprint columns** on Activity model (populated at upload/sync, backfilled via `npx tsx prisma/backfill-fingerprints.ts`):
+- `startLatitude`, `startLongitude` — first point of the route
+- `boundingBoxMinLat`, `boundingBoxMaxLat`, `boundingBoxMinLon`, `boundingBoxMaxLon` — geographic extent
 
 ---
 
@@ -601,7 +633,7 @@ components/
 └── admin/         # User management table
 ```
 
-- **`ui/`** components are style-only wrappers using `class-variance-authority` for variants. They never contain business logic.
+- **`ui/`** components are style-only wrappers using `class-variance-authority` for variants (Button, Card, Input, Label, Slider, etc.). They never contain business logic.
 - **Domain components** (activities, dashboard, etc.) fetch data, manage state, and render domain-specific UI.
 
 ### Server vs Client Split
@@ -653,6 +685,10 @@ All charts use **Recharts**:
 - `components/dashboard/distance-chart.tsx` — BarChart for weekly distance
 - `components/dashboard/pace-trend-chart.tsx` — LineChart for pace over time
 - `components/dashboard/leaderboard-chart.tsx` — BarChart for global rankings
+- `components/dashboard/compare-pace-chart.tsx` — Summary table + average pace BarChart
+- `components/dashboard/compare-pace-along-track-chart.tsx` — LineChart: instantaneous pace vs distance (smoothed, Y-axis reversed)
+- `components/dashboard/compare-elevation-chart.tsx` — LineChart: elevation overlay vs distance
+- `components/dashboard/compare-heart-rate-chart.tsx` — LineChart: heart rate overlay vs distance (hidden when no HR data)
 
 ---
 
