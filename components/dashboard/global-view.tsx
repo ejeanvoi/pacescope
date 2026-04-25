@@ -26,6 +26,7 @@ import {
   Award,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ACTIVITY_TYPE_OPTIONS } from "@/lib/constants";
 import { LeaderboardDistanceChart } from "./leaderboard-chart";
 
 const PERIODS = [
@@ -36,9 +37,7 @@ const PERIODS = [
 
 const ACTIVITY_TYPES = [
   { value: "", label: "All Types" },
-  { value: "RUN", label: "Run" },
-  { value: "TRAIL_RUN", label: "Trail Run" },
-  { value: "TREADMILL", label: "Treadmill" },
+  ...ACTIVITY_TYPE_OPTIONS,
 ] as const;
 
 interface LeaderboardEntry {
@@ -66,6 +65,8 @@ interface GlobalData {
   currentUserOptedIn: boolean;
   period: string;
 }
+
+const RANK_ICONS = [Trophy, Medal, Award];
 
 export function GlobalView() {
   const [period, setPeriod] = useState("all");
@@ -117,8 +118,6 @@ export function GlobalView() {
       : period === "monthly"
         ? "This month"
         : "All time";
-
-  const RANK_ICONS = [Trophy, Medal, Award];
 
   return (
     <div className="space-y-6">
@@ -349,7 +348,6 @@ export function GlobalView() {
           {/* Distance comparison chart */}
           <LeaderboardDistanceChart
             leaderboard={data?.leaderboard ?? []}
-            period={periodLabel}
           />
         </div>
       </div>

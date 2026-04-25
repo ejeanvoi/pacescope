@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -174,7 +174,7 @@ export function UserTable({ currentUserId }: UserTableProps) {
       </CardHeader>
       <CardContent>
         {error && (
-          <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">
+          <div className="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
             {error}
           </div>
         )}
@@ -209,9 +209,8 @@ export function UserTable({ currentUserId }: UserTableProps) {
                   const stats = userStats[user.id];
 
                   return (
-                    <>
+                    <React.Fragment key={user.id}>
                       <tr
-                        key={user.id}
                         className={cn(
                           "border-b transition-colors",
                           isSelf && "bg-primary/5",
@@ -366,7 +365,7 @@ export function UserTable({ currentUserId }: UserTableProps) {
                           </td>
                         </tr>
                       )}
-                    </>
+                    </React.Fragment>
                   );
                 })}
               </tbody>

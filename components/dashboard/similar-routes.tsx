@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { formatDistance, formatPace } from "@/lib/calculations";
+import { MAX_COMPARE_ACTIVITIES } from "@/lib/constants";
 import { Search, Route, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -82,7 +83,7 @@ export function SimilarRoutes({
   const addableSelected = [...localSelected].filter(
     (id) => !selectedIds.includes(id)
   );
-  const wouldExceedMax = selectedIds.length + addableSelected.length > 20;
+  const wouldExceedMax = selectedIds.length + addableSelected.length > MAX_COMPARE_ACTIVITIES;
 
   const handleAddSelected = () => {
     onAddMultipleToCompare(addableSelected);
