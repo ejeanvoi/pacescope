@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   ComposedChart,
   Area,
@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import { formatPace } from "@/lib/calculations";
 import { TrendingUp, Heart, Mountain, Percent } from "lucide-react";
 
@@ -22,17 +23,23 @@ interface ElevationDataPoint {
   heartRate: number | null; // bpm
   verticalSpeed: number | null; // m/h
   slope: number | null; // %
+  timestamp: string | null; // ISO string
 }
 
 interface ElevationChartProps {
   data: ElevationDataPoint[];
+  onRangeChange?: (startKm: number, endKm: number) => void;
 }
 
-export function ElevationChart({ data }: ElevationChartProps) {
+export function ElevationChart({
+  data,
+  onRangeChange,
+}: ElevationChartProps) {
   const [showPace, setShowPace] = useState(false);
   const [showHeartRate, setShowHeartRate] = useState(false);
   const [showVerticalSpeed, setShowVerticalSpeed] = useState(false);
   const [showSlope, setShowSlope] = useState(false);
+  const [rangeValue, setRangeValue] = useState<[number, number]>([0, 100]);
 
   const hasPaceData = data.some((d) => d.pace != null && d.pace > 0);
   const hasHeartRateData = data.some((d) => d.heartRate != null);
@@ -51,6 +58,7 @@ export function ElevationChart({ data }: ElevationChartProps) {
           ? Math.round(d.verticalSpeed * 10) / 10
           : undefined,
       slope: d.slope != null ? Math.round(d.slope * 10) / 10 : undefined,
+      timestamp: d.timestamp ?? undefined,
     }));
 
   // Downsample if too many points (keep ~500 max for chart performance)
@@ -69,12 +77,29 @@ export function ElevationChart({ data }: ElevationChartProps) {
     return null;
   }
 
-  const minElev = Math.min(...sampled.map((d) => d.elevation));
+  // Calculate distance range for slider
+  const totalDistance = sampled[sampled.length - 1].distance;
+  const startKm = (rangeValue[0] / 100) * totalDistance;
+  const endKm = (rangeValue[1] / 100) * totalDistance;
+
+  // Filter data based on slider range
+  const filteredData = sampled.filter(
+    (d) => d.distance >= startKm && d.distance <= endKm
+  );
+
+  // Use filtered data for chart, but keep sampled for full data
+  const chartDisplay = filteredData.length > 0 ? filteredData : sampled;
+
+  const minElev = Math.min(...chartDisplay.map((d) => d.elevation));
   const maxElev = Math.max(...sampled.map((d) => d.elevation));
   const elevPadding = Math.max((maxElev - minElev) * 0.1, 5);
 
-  const paceValues = sampled.map((d) => d.pace).filter((p): p is number => p != null);
-  const hrValues = sampled.map((d) => d.heartRate).filter((h): h is number => h != null);
+  const paceValues = chartDisplay
+    .map((d) => d.pace)
+    .filter((p): p is number => p != null);
+  const hrValues = chartDisplay
+    .map((d) => d.heartRate)
+    .filter((h): h is number => h != null);
 
   const minPace = paceValues.length > 0 ? Math.min(...paceValues) : 0;
   const maxPace = paceValues.length > 0 ? Math.max(...paceValues) : 0;
@@ -84,14 +109,14 @@ export function ElevationChart({ data }: ElevationChartProps) {
   const maxHr = hrValues.length > 0 ? Math.max(...hrValues) : 0;
   const hrPadding = Math.max((maxHr - minHr) * 0.1, 5);
 
-  const vsValues = sampled
+  const vsValues = chartDisplay
     .map((d) => d.verticalSpeed)
     .filter((v): v is number => v != null);
   const minVs = vsValues.length > 0 ? Math.min(...vsValues) : 0;
   const maxVs = vsValues.length > 0 ? Math.max(...vsValues) : 0;
   const vsPadding = Math.max((maxVs - minVs) * 0.1, 50);
 
-  const slopeValues = sampled
+  const slopeValues = chartDisplay
     .map((d) => d.slope)
     .filter((s): s is number => s != null);
   const minSlope = slopeValues.length > 0 ? Math.min(...slopeValues) : 0;
@@ -152,8 +177,8 @@ export function ElevationChart({ data }: ElevationChartProps) {
         </div>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={250}>
-          <ComposedChart data={sampled}>
+        <ResponsiveContainer width="100%" height={280}>
+          <ComposedChart data={chartDisplay} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
             <defs>
               <linearGradient id="elevGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
@@ -342,6 +367,29 @@ export function ElevationChart({ data }: ElevationChartProps) {
             )}
           </ComposedChart>
         </ResponsiveContainer>
+
+        {onRangeChange && (
+          <div className="mt-4 space-y-2">
+            <Slider
+              value={rangeValue}
+              onValueChange={(value) => {
+                const newRange = value as [number, number];
+                setRangeValue(newRange);
+                const start = (newRange[0] / 100) * totalDistance;
+                const end = (newRange[1] / 100) * totalDistance;
+                onRangeChange(start, end);
+              }}
+              min={0}
+              max={100}
+              step={0.5}
+              className="w-full"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>{startKm.toFixed(2)} km</span>
+              <span>{endKm.toFixed(2)} km</span>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

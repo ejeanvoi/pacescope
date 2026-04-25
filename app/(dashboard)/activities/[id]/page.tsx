@@ -2,33 +2,15 @@ import { auth } from "@/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { DeleteActivityButton } from "@/components/activities/delete-button";
-import { MapWrapper } from "@/components/activities/map-wrapper";
-import { ElevationChart } from "@/components/activities/elevation-chart";
-import { PaceChart } from "@/components/activities/pace-chart";
+import { ActivityChartSection } from "@/components/activities/activity-chart-section";
 import {
-  formatPace,
-  formatDuration,
-  formatDistance,
   calculateSplits,
   computeCumulativeDistances,
   type TrackPoint,
 } from "@/lib/calculations";
 import { ACTIVITY_TYPE_LABELS } from "@/lib/constants";
-import {
-  ArrowLeft,
-  MapPin,
-  Clock,
-  TrendingUp,
-  Mountain,
-  Heart,
-} from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 export default async function ActivityDetailPage({
   params,
@@ -159,7 +141,19 @@ export default async function ActivityDetailPage({
     heartRate: p.heartRate,
     verticalSpeed: smoothedVerticalSpeeds[i],
     slope: smoothedSlopes[i],
+    timestamp: p.timestamp?.toISOString() ?? null,
   }));
+
+  const defaultStats = {
+    distance: activity.distance,
+    duration: activity.duration,
+    averagePace: activity.averagePace,
+    bestPace: activity.bestPace,
+    elevationGain: activity.elevationGain,
+    elevationLoss: activity.elevationLoss,
+    averageHeartRate: activity.averageHeartRate,
+    maxHeartRate: activity.maxHeartRate,
+  };
 
   return (
     <div className="space-y-6">
@@ -204,107 +198,13 @@ export default async function ActivityDetailPage({
         <DeleteActivityButton activityId={activity.id} />
       </div>
 
-      {/* Stats cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Distance</CardTitle>
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatDistance(activity.distance)}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Duration</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatDuration(activity.duration)}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Pace</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {activity.averagePace
-                ? `${formatPace(activity.averagePace)} /km`
-                : "--:--"}
-            </div>
-            {activity.bestPace && (
-              <p className="text-xs text-muted-foreground">
-                Best: {formatPace(activity.bestPace)} /km
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Elevation</CardTitle>
-            <Mountain className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {activity.elevationGain != null
-                ? `+${Math.round(activity.elevationGain)}m`
-                : "--"}
-            </div>
-            {activity.elevationLoss != null && (
-              <p className="text-xs text-muted-foreground">
-                -{Math.round(activity.elevationLoss)}m loss
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        {activity.averageHeartRate != null && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg HR</CardTitle>
-              <Heart className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {Math.round(activity.averageHeartRate)} bpm
-              </div>
-              {activity.maxHeartRate != null && (
-                <p className="text-xs text-muted-foreground">
-                  Max: {activity.maxHeartRate} bpm
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      {/* Route Map */}
-      {mapPoints.length >= 2 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Route Map</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <MapWrapper points={mapPoints} />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Charts */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <ElevationChart data={elevationData} />
-        <PaceChart splits={splits} averagePace={activity.averagePace} />
-      </div>
+      <ActivityChartSection
+        elevationData={elevationData}
+        defaultStats={defaultStats}
+        mapPoints={mapPoints}
+        splits={splits}
+        hasHeartRate={activity.averageHeartRate != null}
+      />
     </div>
   );
 }
