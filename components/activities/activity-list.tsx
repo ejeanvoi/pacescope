@@ -53,6 +53,7 @@ interface Pagination {
 interface ActivityListProps {
   initialActivities: ActivitySummary[];
   initialPagination: Pagination;
+  initialCountries: string[];
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -78,12 +79,15 @@ const SORT_OPTIONS = [
 export function ActivityList({
   initialActivities,
   initialPagination,
+  initialCountries,
 }: ActivityListProps) {
   const router = useRouter();
   const [activities, setActivities] =
     useState<ActivitySummary[]>(initialActivities);
   const [pagination, setPagination] = useState<Pagination>(initialPagination);
   const [typeFilter, setTypeFilter] = useState("");
+  const [countryFilter, setCountryFilter] = useState("");
+  const [countries, setCountries] = useState<string[]>(initialCountries);
   const [sortBy, setSortBy] = useState("startDate");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [loading, setLoading] = useState(false);
@@ -93,7 +97,8 @@ export function ActivityList({
     page: number,
     type: string,
     sort: string,
-    order: string
+    order: string,
+    country: string = countryFilter
   ) => {
     setLoading(true);
     try {
@@ -104,12 +109,14 @@ export function ActivityList({
         sortOrder: order,
       });
       if (type) params.set("type", type);
+      if (country) params.set("country", country);
 
       const res = await fetch(`/api/activities?${params}`);
       const data = await res.json();
       if (res.ok) {
         setActivities(data.activities);
         setPagination(data.pagination);
+        if (data.countries) setCountries(data.countries);
       }
     } finally {
       setLoading(false);
@@ -119,6 +126,11 @@ export function ActivityList({
   const handleTypeFilter = (type: string) => {
     setTypeFilter(type);
     fetchActivities(1, type, sortBy, sortOrder);
+  };
+
+  const handleCountryFilter = (country: string) => {
+    setCountryFilter(country);
+    fetchActivities(1, typeFilter, sortBy, sortOrder, country);
   };
 
   const handleSort = (sort: string) => {
@@ -188,6 +200,25 @@ export function ActivityList({
             </Button>
           ))}
         </div>
+        {countries.length > 0 && (
+          <select
+            value={countryFilter}
+            onChange={(e) => handleCountryFilter(e.target.value)}
+            className={cn(
+              "h-9 rounded-md border bg-background px-3 text-sm transition-colors",
+              countryFilter
+                ? "border-primary text-foreground"
+                : "text-muted-foreground"
+            )}
+          >
+            <option value="">All Countries</option>
+            {countries.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        )}
         <div className="ml-auto flex gap-1">
           {SORT_OPTIONS.map((s) => (
             <Button

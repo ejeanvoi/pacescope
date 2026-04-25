@@ -12,7 +12,7 @@ export default async function ActivitiesPage() {
 
   const limit = 20;
 
-  const [activities, total] = await Promise.all([
+  const [activities, total, locationRows] = await Promise.all([
     prisma.activity.findMany({
       where: { userId: session.user.id },
       orderBy: { startDate: "desc" },
@@ -34,7 +34,23 @@ export default async function ActivitiesPage() {
       },
     }),
     prisma.activity.count({ where: { userId: session.user.id } }),
+    prisma.activity.findMany({
+      where: { userId: session.user.id, location: { not: null } },
+      select: { location: true },
+      distinct: ["location"],
+    }),
   ]);
+
+  const countries = [
+    ...new Set(
+      locationRows
+        .map((r) => {
+          const parts = r.location?.split(", ");
+          return parts && parts.length >= 2 ? parts[parts.length - 1] : null;
+        })
+        .filter((c): c is string => c != null)
+    ),
+  ].sort((a, b) => a.localeCompare(b));
 
   // Serialize dates for client component
   const serialized = activities.map((a) => ({
@@ -68,6 +84,7 @@ export default async function ActivitiesPage() {
           total,
           totalPages: Math.ceil(total / limit),
         }}
+        initialCountries={countries}
       />
     </div>
   );
