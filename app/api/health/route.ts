@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
     // Test database connectivity
-    await prisma.$queryRawUnsafe("SELECT 1");
+    await prisma.$queryRaw(Prisma.sql`SELECT 1`);
     return NextResponse.json({
       status: "ok",
       database: "connected",
