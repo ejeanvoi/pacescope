@@ -13,13 +13,15 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatPace } from "@/lib/calculations";
-import { TrendingUp, Heart } from "lucide-react";
+import { TrendingUp, Heart, Mountain, Percent } from "lucide-react";
 
 interface ElevationDataPoint {
   distance: number; // meters
   elevation: number | null;
   pace: number | null; // seconds per km
   heartRate: number | null; // bpm
+  verticalSpeed: number | null; // m/h
+  slope: number | null; // %
 }
 
 interface ElevationChartProps {
@@ -29,9 +31,13 @@ interface ElevationChartProps {
 export function ElevationChart({ data }: ElevationChartProps) {
   const [showPace, setShowPace] = useState(false);
   const [showHeartRate, setShowHeartRate] = useState(false);
+  const [showVerticalSpeed, setShowVerticalSpeed] = useState(false);
+  const [showSlope, setShowSlope] = useState(false);
 
   const hasPaceData = data.some((d) => d.pace != null && d.pace > 0);
   const hasHeartRateData = data.some((d) => d.heartRate != null);
+  const hasVerticalSpeedData = data.some((d) => d.verticalSpeed != null);
+  const hasSlopeData = data.some((d) => d.slope != null);
 
   const chartData = data
     .filter((d) => d.elevation != null)
@@ -40,6 +46,11 @@ export function ElevationChart({ data }: ElevationChartProps) {
       elevation: Math.round(d.elevation!),
       pace: d.pace != null && d.pace > 0 ? Math.round(d.pace) : undefined,
       heartRate: d.heartRate != null ? d.heartRate : undefined,
+      verticalSpeed:
+        d.verticalSpeed != null
+          ? Math.round(d.verticalSpeed * 10) / 10
+          : undefined,
+      slope: d.slope != null ? Math.round(d.slope * 10) / 10 : undefined,
     }));
 
   // Downsample if too many points (keep ~500 max for chart performance)
@@ -73,6 +84,20 @@ export function ElevationChart({ data }: ElevationChartProps) {
   const maxHr = hrValues.length > 0 ? Math.max(...hrValues) : 0;
   const hrPadding = Math.max((maxHr - minHr) * 0.1, 5);
 
+  const vsValues = sampled
+    .map((d) => d.verticalSpeed)
+    .filter((v): v is number => v != null);
+  const minVs = vsValues.length > 0 ? Math.min(...vsValues) : 0;
+  const maxVs = vsValues.length > 0 ? Math.max(...vsValues) : 0;
+  const vsPadding = Math.max((maxVs - minVs) * 0.1, 50);
+
+  const slopeValues = sampled
+    .map((d) => d.slope)
+    .filter((s): s is number => s != null);
+  const minSlope = slopeValues.length > 0 ? Math.min(...slopeValues) : 0;
+  const maxSlope = slopeValues.length > 0 ? Math.max(...slopeValues) : 0;
+  const slopePadding = Math.max((maxSlope - minSlope) * 0.1, 2);
+
   return (
     <Card>
       <CardHeader>
@@ -99,6 +124,28 @@ export function ElevationChart({ data }: ElevationChartProps) {
               >
                 <Heart className="h-3 w-3" />
                 HR
+              </Button>
+            )}
+            {hasVerticalSpeedData && (
+              <Button
+                variant={showVerticalSpeed ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowVerticalSpeed(!showVerticalSpeed)}
+                className="h-7 gap-1 text-xs"
+              >
+                <Mountain className="h-3 w-3" />
+                V. Speed
+              </Button>
+            )}
+            {hasSlopeData && (
+              <Button
+                variant={showSlope ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowSlope(!showSlope)}
+                className="h-7 gap-1 text-xs"
+              >
+                <Percent className="h-3 w-3" />
+                Slope
               </Button>
             )}
           </div>
@@ -163,6 +210,36 @@ export function ElevationChart({ data }: ElevationChartProps) {
                 width={40}
               />
             )}
+            {showVerticalSpeed && (
+              <YAxis
+                yAxisId="vs"
+                orientation="right"
+                domain={[
+                  Math.floor(minVs - vsPadding),
+                  Math.ceil(maxVs + vsPadding),
+                ]}
+                tickFormatter={(v: number) => `${v}`}
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+                width={50}
+              />
+            )}
+            {showSlope && (
+              <YAxis
+                yAxisId="slope"
+                orientation="right"
+                domain={[
+                  Math.floor(minSlope - slopePadding),
+                  Math.ceil(maxSlope + slopePadding),
+                ]}
+                tickFormatter={(v: number) => `${v}%`}
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+                width={40}
+              />
+            )}
             <Tooltip
               content={({ active, payload, label }) => {
                 if (!active || !payload?.length) return null;
@@ -188,6 +265,20 @@ export function ElevationChart({ data }: ElevationChartProps) {
                         return (
                           <p key="hr" style={{ color: entry.color }}>
                             HR: {entry.value} bpm
+                          </p>
+                        );
+                      }
+                      if (entry.dataKey === "verticalSpeed" && showVerticalSpeed) {
+                        return (
+                          <p key="vs" style={{ color: entry.color }}>
+                            Vertical: {entry.value} m/h
+                          </p>
+                        );
+                      }
+                      if (entry.dataKey === "slope" && showSlope) {
+                        return (
+                          <p key="slope" style={{ color: entry.color }}>
+                            Slope: {entry.value}%
                           </p>
                         );
                       }
@@ -222,6 +313,28 @@ export function ElevationChart({ data }: ElevationChartProps) {
                 type="monotone"
                 dataKey="heartRate"
                 stroke="#ef4444"
+                strokeWidth={1.5}
+                dot={false}
+                connectNulls
+              />
+            )}
+            {showVerticalSpeed && (
+              <Line
+                yAxisId="vs"
+                type="monotone"
+                dataKey="verticalSpeed"
+                stroke="#8b5cf6"
+                strokeWidth={1.5}
+                dot={false}
+                connectNulls
+              />
+            )}
+            {showSlope && (
+              <Line
+                yAxisId="slope"
+                type="monotone"
+                dataKey="slope"
+                stroke="#10b981"
                 strokeWidth={1.5}
                 dot={false}
                 connectNulls

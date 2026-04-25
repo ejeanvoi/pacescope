@@ -94,12 +94,71 @@ export default async function ActivityDetailPage({
     return values.reduce((s, v) => s + v, 0) / values.length;
   });
 
-  // Prepare elevation data with pace and heart rate
+  // Compute per-point vertical speed (m/h)
+  const pointVerticalSpeeds: (number | null)[] = activity.points.map((p, i) => {
+    if (
+      i === 0 ||
+      p.elevation == null ||
+      activity.points[i - 1].elevation == null
+    )
+      return null;
+    const prev = activity.points[i - 1];
+    if (!p.timestamp || !prev.timestamp) return null;
+    const timeDiff =
+      (new Date(p.timestamp).getTime() - new Date(prev.timestamp).getTime()) /
+      1000;
+    if (timeDiff <= 0) return null;
+    return ((p.elevation - prev.elevation!) / timeDiff) * 3600;
+  });
+
+  // Smooth vertical speed with rolling average (window of ~10 points)
+  const smoothedVerticalSpeeds: (number | null)[] = pointVerticalSpeeds.map(
+    (_, i) => {
+      const start = Math.max(0, i - Math.floor(smoothWindow / 2));
+      const end = Math.min(
+        pointVerticalSpeeds.length,
+        i + Math.ceil(smoothWindow / 2)
+      );
+      const values = pointVerticalSpeeds
+        .slice(start, end)
+        .filter((v): v is number => v != null);
+      if (values.length === 0) return null;
+      return values.reduce((s, v) => s + v, 0) / values.length;
+    }
+  );
+
+  // Compute per-point slope (%)
+  const pointSlopes: (number | null)[] = activity.points.map((p, i) => {
+    if (
+      i === 0 ||
+      p.elevation == null ||
+      activity.points[i - 1].elevation == null
+    )
+      return null;
+    const distDiff = cumulativeDistances[i] - cumulativeDistances[i - 1];
+    if (distDiff <= 0) return null;
+    return ((p.elevation - activity.points[i - 1].elevation!) / distDiff) * 100;
+  });
+
+  // Smooth slope with rolling average (window of ~10 points)
+  const smoothedSlopes: (number | null)[] = pointSlopes.map((_, i) => {
+    const start = Math.max(0, i - Math.floor(smoothWindow / 2));
+    const end = Math.min(pointSlopes.length, i + Math.ceil(smoothWindow / 2));
+    const values = pointSlopes
+      .slice(start, end)
+      .filter((v): v is number => v != null);
+    if (values.length === 0) return null;
+    return values.reduce((s, v) => s + v, 0) / values.length;
+  });
+
+  // Prepare elevation data with pace, heart rate, vertical speed, and slope
   const elevationData = activity.points.map((p, i) => ({
     distance: cumulativeDistances[i],
     elevation: p.elevation,
     pace: smoothedPaces[i],
     heartRate: p.heartRate,
+    verticalSpeed: smoothedVerticalSpeeds[i],
+    slope: smoothedSlopes[i],
   }));
 
   return (
