@@ -16,6 +16,8 @@ import { cn } from "@/lib/utils";
 import { CompareMapWrapper } from "./compare-map-wrapper";
 import { CompareElevationChart } from "./compare-elevation-chart";
 import { ComparePaceChart } from "./compare-pace-chart";
+import { ComparePaceAlongTrackChart } from "./compare-pace-along-track-chart";
+import { CompareHeartRateChart } from "./compare-heart-rate-chart";
 import { SimilarRoutes } from "./similar-routes";
 
 const ROUTE_COLORS = ["#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c"];
@@ -41,7 +43,9 @@ interface CompareActivity {
     latitude: number;
     longitude: number;
     elevation: number | null;
+    timestamp: string | null;
     cumulativeDistance: number | null;
+    heartRate: number | null;
   }>;
 }
 
@@ -231,8 +235,16 @@ export function CompareView() {
 
       {!loading && compareData.length >= 2 && (
         <div className="space-y-6">
-          {/* Comparison table */}
+          {/* Summary table + average pace bars */}
           <ComparePaceChart activities={compareData} />
+
+          {/* Pace along track */}
+          <ComparePaceAlongTrackChart
+            activities={compareData.map((a) => ({
+              name: a.name,
+              points: a.points,
+            }))}
+          />
 
           {/* Map overlay */}
           <Card>
@@ -251,6 +263,14 @@ export function CompareView() {
 
           {/* Elevation overlay */}
           <CompareElevationChart
+            activities={compareData.map((a) => ({
+              name: a.name,
+              points: a.points,
+            }))}
+          />
+
+          {/* Heart rate overlay */}
+          <CompareHeartRateChart
             activities={compareData.map((a) => ({
               name: a.name,
               points: a.points,

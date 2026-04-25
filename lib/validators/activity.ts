@@ -27,7 +27,7 @@ export const globalDashboardQuerySchema = z.object({
 
 export const similarRoutesQuerySchema = z.object({
   threshold: z.coerce.number().min(0).max(100).default(80),
-  limit: z.coerce.number().int().min(1).max(20).default(10),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 
 export const GPX_MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB

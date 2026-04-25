@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
           elevation: true,
           timestamp: true,
           cumulativeDistance: true,
+          heartRate: true,
         },
       },
     },
