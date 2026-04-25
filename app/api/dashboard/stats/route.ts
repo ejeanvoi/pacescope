@@ -117,8 +117,14 @@ export async function GET(request: NextRequest) {
       distance: a.distance,
     }));
 
-  // Calculate running streak
-  const streak = await calculateStreak(userId);
+  // Calculate running streak and best efforts in parallel
+  const [streak, bestEfforts] = await Promise.all([
+    calculateStreak(userId),
+    calculateBestEfforts(
+      activities.map((a) => a.id),
+      activities
+    ),
+  ]);
 
   return NextResponse.json({
     summary: {
@@ -135,6 +141,7 @@ export async function GET(request: NextRequest) {
     monthlySummary,
     paceTrend,
     recentActivities,
+    bestEfforts,
   });
 }
 
@@ -229,6 +236,131 @@ function buildMonthlySummary(activities: ActivityRow[]) {
       averagePace: m.paceCount > 0 ? m.totalPace / m.paceCount : null,
       elevation: m.elevation,
     }));
+}
+
+// ─── Best Efforts ──────────────────────────────────────────────────
+
+const BEST_EFFORT_DISTANCES = [
+  { key: "400m", label: "400m", meters: 400 },
+  { key: "1k", label: "1K", meters: 1_000 },
+  { key: "5k", label: "5K", meters: 5_000 },
+  { key: "10k", label: "10K", meters: 10_000 },
+  { key: "half", label: "Half Marathon", meters: 21_097.5 },
+  { key: "marathon", label: "Marathon", meters: 42_195 },
+] as const;
+
+interface BestEffort {
+  key: string;
+  label: string;
+  meters: number;
+  time: number | null; // seconds
+  activityId: string | null;
+  activityName: string | null;
+}
+
+interface LongestEffort {
+  distance: number;
+  activityId: string | null;
+  activityName: string | null;
+}
+
+interface BestEffortsResult {
+  distances: BestEffort[];
+  longest: LongestEffort;
+}
+
+/**
+ * Finds the fastest time for each standard distance across all given activities.
+ * Uses a sliding window on each activity's trackpoints.
+ */
+async function calculateBestEfforts(
+  activityIds: string[],
+  activities: Array<{ id: string; name: string; distance: number }>
+): Promise<BestEffortsResult> {
+  // Initialize results
+  const best: Record<string, { time: number; activityId: string; activityName: string }> = {};
+
+  if (activityIds.length > 0) {
+    // Fetch points for all matching activities (only the fields we need)
+    const points = await prisma.activityPoint.findMany({
+      where: { activityId: { in: activityIds } },
+      orderBy: [{ activityId: "asc" }, { index: "asc" }],
+      select: {
+        activityId: true,
+        timestamp: true,
+        cumulativeDistance: true,
+      },
+    });
+
+    // Group points by activity
+    const pointsByActivity = new Map<
+      string,
+      Array<{ timestamp: Date; cumulativeDistance: number }>
+    >();
+    for (const p of points) {
+      if (p.cumulativeDistance == null) continue;
+      let arr = pointsByActivity.get(p.activityId);
+      if (!arr) {
+        arr = [];
+        pointsByActivity.set(p.activityId, arr);
+      }
+      arr.push({ timestamp: p.timestamp, cumulativeDistance: p.cumulativeDistance });
+    }
+
+    // Build a name lookup
+    const nameById = new Map(activities.map((a) => [a.id, a.name]));
+
+    // For each activity, find best time for each target distance
+    for (const [activityId, pts] of pointsByActivity) {
+      if (pts.length < 2) continue;
+      const totalDist = pts[pts.length - 1].cumulativeDistance;
+      const activityName = nameById.get(activityId) ?? "Unknown";
+
+      for (const target of BEST_EFFORT_DISTANCES) {
+        if (totalDist < target.meters) continue;
+
+        // Sliding window: advance tail pointer while window covers target distance
+        let tail = 0;
+        for (let head = 1; head < pts.length; head++) {
+          while (
+            tail < head &&
+            pts[head].cumulativeDistance - pts[tail].cumulativeDistance > target.meters
+          ) {
+            tail++;
+          }
+          const coveredDist =
+            pts[head].cumulativeDistance - pts[tail].cumulativeDistance;
+          if (coveredDist >= target.meters) {
+            const time =
+              (pts[head].timestamp.getTime() - pts[tail].timestamp.getTime()) / 1000;
+            if (time > 0 && (!best[target.key] || time < best[target.key].time)) {
+              best[target.key] = { time, activityId, activityName };
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Longest distance
+  let longest: LongestEffort = { distance: 0, activityId: null, activityName: null };
+  for (const a of activities) {
+    if (a.distance > longest.distance) {
+      longest = { distance: a.distance, activityId: a.id, activityName: a.name };
+    }
+  }
+
+  return {
+    distances: BEST_EFFORT_DISTANCES.map((d) => ({
+      key: d.key,
+      label: d.label,
+      meters: d.meters,
+      time: best[d.key]?.time ?? null,
+      activityId: best[d.key]?.activityId ?? null,
+      activityName: best[d.key]?.activityName ?? null,
+    })),
+    longest,
+  };
 }
 
 async function calculateStreak(userId: string): Promise<number> {
