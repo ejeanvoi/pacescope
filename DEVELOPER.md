@@ -189,7 +189,8 @@ pacescope/
 │   └── admin/                        # UserTable
 │
 ├── lib/                              # Shared utilities and business logic
-│   ├── calculations.ts               # Distance, pace, elevation, splits
+│   ├── constants.ts                  # Shared app-wide constants (activity types, limits)
+│   ├── calculations.ts               # Distance, pace, elevation, splits, shared formatters
 │   ├── gpx.ts                        # GPX XML parsing
 │   ├── crypto.ts                     # AES-256-GCM encryption
 │   ├── strava.ts                     # Strava API client
@@ -483,6 +484,21 @@ All endpoints return JSON. Authentication is checked via `await auth()` from `@/
 
 ## 7. Core Libraries
 
+### `lib/constants.ts` — Shared Constants
+
+Single source of truth for app-wide constants. Import from here instead of redeclaring locally.
+
+| Export | Type | Value / Description |
+|--------|------|---------------------|
+| `ACTIVITY_TYPE_VALUES` | `readonly string[]` | `["RUN", "TRAIL_RUN", "TREADMILL"]` — used to derive the Zod enum in validators |
+| `ACTIVITY_TYPE_OPTIONS` | `readonly object[]` | `{ value, label }` pairs for UI dropdowns |
+| `ACTIVITY_TYPE_LABELS` | `Record<string, string>` | Derived map of `value → label` (e.g. `"TRAIL_RUN" → "Trail Run"`) |
+| `ROUTE_COLORS` | `string[]` | Ordered palette for multi-activity chart lines |
+| `GPX_MAX_FILE_SIZE` | `number` | `10 * 1024 * 1024` (10 MB) — GPX upload limit |
+| `MAX_COMPARE_ACTIVITIES` | `number` | `20` — max activities in a compare/similar-routes request |
+
+> **Adding a new activity type?** Update `ACTIVITY_TYPE_VALUES` and `ACTIVITY_TYPE_OPTIONS` here — the Zod enum in `lib/validators/activity.ts` and all UI dropdowns update automatically.
+
 ### `lib/calculations.ts` — Running Metrics
 
 All distance values are in **meters**, pace in **seconds per km**, duration in **seconds**.
@@ -501,6 +517,9 @@ All distance values are in **meters**, pace in **seconds per km**, duration in *
 | `formatPace` | `(secPerKm) → string` | `"5:23"` format |
 | `formatDuration` | `(seconds) → string` | `"1h 23m"` or `"45m 12s"` format |
 | `formatDistance` | `(meters) → string` | `"10.52 km"` format |
+| `formatWeekLabel` | `(weekStart: string) → string` | Formats an ISO date string as `"Jan 5"` for chart x-axis labels |
+| `formatEffortTime` | `(seconds: number) → string` | Formats raw seconds as `"H:MM:SS"` or `"M:SS"` for effort-time display |
+| `extractCountries` | `(rows: Array<{ location: string \| null }>) → string[]` | Extracts sorted unique country names from `"City, Country"` location strings |
 
 **Key types:**
 
@@ -551,7 +570,19 @@ decrypt(encrypted: string): string   // reverses the above
 
 ### `lib/strava.ts` — Strava Integration
 
-Complete OAuth and data sync client:
+Complete OAuth and data sync client.
+
+**Module-level constants:**
+
+| Constant | Description |
+|----------|-------------|
+| `STRAVA_BASE_URL` | `"https://www.strava.com"` |
+| `STRAVA_API_URL` | Derived as `${STRAVA_BASE_URL}/api/v3` |
+| `TOKEN_EXPIRY_BUFFER_SECONDS` | Seconds before expiry to trigger a proactive refresh (300 s) |
+| `STRAVA_OAUTH_SCOPE` | OAuth scope string requested during authorization |
+| `STRAVA_PAGE_SIZE` | Activities fetched per API page (50) |
+
+**Public API:**
 
 | Function | Purpose |
 |----------|---------|
@@ -567,7 +598,7 @@ Complete OAuth and data sync client:
 
 **Sync flow** (`/api/strava/sync`):
 1. Get valid access token (refresh if expired)
-2. Fetch activities page by page (since `lastSyncAt`)
+2. Fetch activities page by page (since `lastSyncAt`), `STRAVA_PAGE_SIZE` per request
 3. Skip non-running activities and duplicates (by `stravaActivityId`)
 4. For each new activity: fetch GPS streams → convert to TrackPoints → compute metrics → create Activity + Points in transaction
 5. Update `lastSyncAt`
@@ -601,6 +632,8 @@ Current limits:
 | `globalDashboardQuerySchema` | `activity.ts` | Period (weekly/monthly/all) + type filter |
 | `similarRoutesQuerySchema` | `activity.ts` | Threshold (0-100) + limit (1-100) for route similarity search |
 
+The activity type Zod enum (`activityTypeEnum`) is derived from `ACTIVITY_TYPE_VALUES` in `lib/constants.ts` and reused across all schemas. Adding a new type only requires updating `lib/constants.ts`.
+
 ### `lib/geocoding.ts` — Reverse Geocoding
 
 Converts GPS coordinates to a human-readable location name using OpenStreetMap Nominatim.
@@ -625,6 +658,12 @@ Computes GPS route similarity between activities. Used by the "Find Similar Rout
 | `normalizeRoute` | `(points, sampleCount=50) → SamplePoint[]` | Resamples a route to N equidistant points via linear interpolation on `cumulativeDistance` |
 | `computeRouteSimilarity` | `(samplesA, samplesB, tolerance=200) → number` | Symmetric average minimum distance, returns 0-100% similarity |
 | `boundingBoxesOverlap` | `(a, b) → boolean` | Checks if two bounding boxes overlap (with ~200m padding) |
+
+**Exported constant:**
+
+| Constant | Description |
+|----------|-------------|
+| `BBOX_PADDING_DEG` | Degrees of padding added to bounding-box overlap checks (~200 m at mid-latitudes). Imported by the similar-routes API route |
 
 **Algorithm:**
 - For each point on route A, find the closest point on route B (and vice versa)
@@ -740,14 +779,21 @@ npm run db:push       # pushes without migration
 npm run db:generate   # regenerates Prisma client
 ```
 
-**Step 3: Update Zod validators**
+**Step 3: Update the shared constants**
 
 ```typescript
-// lib/validators/activity.ts — update ALL schemas that reference the type enum
-z.enum(["RUN", "TRAIL_RUN", "TREADMILL", "CYCLING"])
+// lib/constants.ts — add the new value to both arrays
+export const ACTIVITY_TYPE_VALUES = ["RUN", "TRAIL_RUN", "TREADMILL", "CYCLING"] as const;
+
+export const ACTIVITY_TYPE_OPTIONS = [
+  { value: "RUN",       label: "Run" },
+  { value: "TRAIL_RUN", label: "Trail Run" },
+  { value: "TREADMILL", label: "Treadmill" },
+  { value: "CYCLING",   label: "Cycling" },   // ← add this
+] as const;
 ```
 
-Affected schemas: `gpxUploadSchema`, `activityListQuerySchema`, `dashboardStatsQuerySchema`, `globalDashboardQuerySchema`.
+The Zod enum in `lib/validators/activity.ts` (`activityTypeEnum`) is derived from `ACTIVITY_TYPE_VALUES` and propagates automatically to all schemas (`gpxUploadSchema`, `activityListQuerySchema`, `dashboardStatsQuerySchema`, `globalDashboardQuerySchema`). No validator changes needed.
 
 **Step 4: Update Strava type mapping** (if applicable)
 
