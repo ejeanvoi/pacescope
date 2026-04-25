@@ -17,6 +17,7 @@ import {
   GPX_MAX_FILE_SIZE,
 } from "@/lib/validators/activity";
 import { computeRouteFingerprint } from "@/lib/route-similarity";
+import { reverseGeocode } from "@/lib/geocoding";
 import type { ActivityType, ActivitySource } from "@/generated/prisma/client";
 
 // ─── POST: Upload GPX file ─────────────────────────────────────────
@@ -113,6 +114,11 @@ export async function POST(request: NextRequest) {
   // Compute route fingerprint for similarity search
   const fingerprint = computeRouteFingerprint(trackpoints);
 
+  // Reverse-geocode start point to get location name
+  const location = fingerprint
+    ? await reverseGeocode(fingerprint.startLatitude, fingerprint.startLongitude)
+    : null;
+
   // Create activity + points in a transaction
   const activity = await prisma.$transaction(async (tx) => {
     const created = await tx.activity.create({
@@ -130,6 +136,7 @@ export async function POST(request: NextRequest) {
         bestPace,
         averageHeartRate,
         maxHeartRate,
+        location,
         startLatitude: fingerprint?.startLatitude ?? null,
         startLongitude: fingerprint?.startLongitude ?? null,
         boundingBoxMinLat: fingerprint?.boundingBox.minLat ?? null,
@@ -202,6 +209,7 @@ export async function GET(request: NextRequest) {
         averagePace: true,
         bestPace: true,
         averageHeartRate: true,
+        location: true,
         createdAt: true,
       },
     }),

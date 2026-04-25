@@ -115,6 +115,9 @@ model Activity {
   maxHeartRate    Int?
   calories        Int?
 
+  // Reverse-geocoded location name (e.g. "Paris, France")
+  location String?
+
   // Route fingerprint for similarity search
   startLatitude     Float?
   startLongitude    Float?

@@ -39,6 +39,7 @@ interface ActivitySummary {
   averagePace: number | null;
   bestPace: number | null;
   averageHeartRate: number | null;
+  location: string | null;
   createdAt: string;
 }
 
@@ -218,7 +219,14 @@ export function ActivityList({
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between">
                 <div>
-                  <CardTitle className="text-lg">{activity.name}</CardTitle>
+                  <CardTitle className="text-lg">
+                    {activity.name}
+                    {activity.location && (
+                      <span className="ml-2 text-sm font-normal text-muted-foreground">
+                        — {activity.location}
+                      </span>
+                    )}
+                  </CardTitle>
                   <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
                     <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                       {TYPE_LABELS[activity.type] || activity.type}
