@@ -20,6 +20,7 @@ export const dashboardStatsQuerySchema = z.object({
   type: z.enum(["RUN", "TRAIL_RUN", "TREADMILL"]).optional(),
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  country: z.string().max(100).optional(),
 });
 
 export const globalDashboardQuerySchema = z.object({
