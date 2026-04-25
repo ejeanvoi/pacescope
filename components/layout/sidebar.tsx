@@ -9,6 +9,7 @@ import {
   Upload,
   Globe,
   Link2,
+  GitCompareArrows,
   Settings,
   Shield,
 } from "lucide-react";
@@ -17,6 +18,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/activities", label: "Activities", icon: Activity },
   { href: "/activities/upload", label: "Upload GPX", icon: Upload },
+  { href: "/activities/compare", label: "Compare", icon: GitCompareArrows },
   { href: "/global", label: "Global", icon: Globe },
   { href: "/strava", label: "Strava", icon: Link2 },
 ];
