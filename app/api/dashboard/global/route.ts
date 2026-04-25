@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import type { ActivityType } from "@/generated/prisma/client";
+import { globalDashboardQuerySchema } from "@/lib/validators/activity";
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -9,9 +9,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const params = request.nextUrl.searchParams;
-  const period = params.get("period") || "all"; // weekly, monthly, all
-  const type = params.get("type") as ActivityType | null;
+  const searchParams = Object.fromEntries(request.nextUrl.searchParams);
+  const parsed = globalDashboardQuerySchema.safeParse(searchParams);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid query parameters" },
+      { status: 400 }
+    );
+  }
+
+  const { period, type } = parsed.data;
 
   // Compute date filter
   const now = new Date();
