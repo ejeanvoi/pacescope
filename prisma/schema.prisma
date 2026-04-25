@@ -1,0 +1,177 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Auth.js Required Models ────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+
+  role             Role    @default(USER)
+  isActive         Boolean @default(true)
+  globalVisibility Boolean @default(false) // opt-in to global leaderboards
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts         Account[]
+  sessions         Session[]
+  activities       Activity[]
+  stravaConnection StravaConnection?
+
+  @@index([email])
+  @@index([role])
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Application Models ─────────────────────────────────────────────
+
+enum ActivityType {
+  RUN
+  TRAIL_RUN
+  TREADMILL
+}
+
+enum ActivitySource {
+  GPX
+  STRAVA
+}
+
+model Activity {
+  id     String @id @default(cuid())
+  userId String
+
+  type   ActivityType   @default(RUN)
+  source ActivitySource
+  name   String
+
+  stravaActivityId String? @unique
+  description      String? @db.Text
+
+  startDate       DateTime
+  duration        Int // seconds
+  distance        Float // meters
+  elevationGain   Float? // meters
+  elevationLoss   Float? // meters
+  averagePace     Float? // seconds per km
+  bestPace        Float? // best 1km split (sec/km)
+  averageHeartRate Float?
+  maxHeartRate    Int?
+  calories        Int?
+
+  // Reverse-geocoded location name (e.g. "Paris, France")
+  location String?
+
+  // Route fingerprint for similarity search
+  startLatitude     Float?
+  startLongitude    Float?
+  boundingBoxMinLat Float?
+  boundingBoxMaxLat Float?
+  boundingBoxMinLon Float?
+  boundingBoxMaxLon Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  points ActivityPoint[]
+
+  @@index([userId])
+  @@index([userId, startDate])
+  @@index([startDate])
+  @@index([userId, boundingBoxMinLat, boundingBoxMaxLat, boundingBoxMinLon, boundingBoxMaxLon])
+}
+
+model ActivityPoint {
+  id         String @id @default(cuid())
+  activityId String
+
+  index     Int // sequence within activity (0-based)
+  latitude  Float
+  longitude Float
+  elevation Float? // meters
+
+  timestamp          DateTime
+  heartRate          Int? // bpm
+  cumulativeDistance  Float? // meters from start
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@index([activityId])
+  @@index([activityId, index])
+}
+
+model StravaConnection {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  stravaAthleteId Int    @unique
+  accessToken     String @db.Text // encrypted
+  refreshToken    String @db.Text // encrypted
+  expiresAt       Int // unix timestamp
+  scope           String?
+  lastSyncAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([stravaAthleteId])
+}
