@@ -17,35 +17,33 @@ export async function POST(request: Request) {
 
     const { name, email, password } = parsed.data;
 
+    // Always hash password to prevent timing-based account enumeration
+    const passwordHash = await hashPassword(password);
+
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
 
     if (existingUser) {
+      // Return same response shape to prevent account enumeration
       return NextResponse.json(
-        { error: "An account with this email already exists" },
-        { status: 409 }
+        { message: "If this email is not already registered, an account has been created." },
+        { status: 201 }
       );
     }
 
-    const passwordHash = await hashPassword(password);
-
-    const user = await prisma.user.create({
+    await prisma.user.create({
       data: {
         name,
         email,
         passwordHash,
       },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        createdAt: true,
-      },
     });
 
-    return NextResponse.json({ user }, { status: 201 });
+    return NextResponse.json(
+      { message: "If this email is not already registered, an account has been created." },
+      { status: 201 }
+    );
   } catch {
     return NextResponse.json(
       { error: "Internal server error" },
