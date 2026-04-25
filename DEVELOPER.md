@@ -424,10 +424,10 @@ All endpoints return JSON. Authentication is checked via `await auth()` from `@/
 
 **GET `/api/activities/[id]/similar?threshold=80&limit=20`**
 - Finds activities with a similar GPS route using two-phase search:
-  1. SQL pre-filter: distance range (50%-200%) + bounding box overlap
+  1. SQL pre-filter: distance range (80%-130%) + bounding box overlap
   2. Detailed comparison: resample to 50 equidistant points, symmetric average minimum distance
 - Query params: `threshold` (0-100, default 80), `limit` (1-100, default 20)
-- Returns: `{ similar: [{ id, name, distance, duration, averagePace, startDate, type, similarity }] }` sorted by date (most recent first)
+- Returns: `{ similar: [{ id, name, distance, duration, averagePace, startDate, type, similarity }] }` sorted by similarity descending, then by date
 - Requires activity to have GPS data (returns 400 for treadmill activities)
 
 ### Dashboard
