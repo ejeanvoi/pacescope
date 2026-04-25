@@ -1,4 +1,4 @@
-process.loadEnvFile();
+try { process.loadEnvFile(); } catch { /* env vars provided by environment */ }
 
 import { defineConfig } from "prisma/config";
 
