@@ -82,7 +82,7 @@ export function SimilarRoutes({
   const addableSelected = [...localSelected].filter(
     (id) => !selectedIds.includes(id)
   );
-  const wouldExceedMax = selectedIds.length + addableSelected.length > 5;
+  const wouldExceedMax = selectedIds.length + addableSelected.length > 20;
 
   const handleAddSelected = () => {
     onAddMultipleToCompare(addableSelected);
@@ -202,7 +202,7 @@ export function SimilarRoutes({
               onClick={handleAddSelected}
             >
               {wouldExceedMax
-                ? "Too many selected (max 5 total)"
+                ? "Too many selected (max 20 total)"
                 : addableSelected.length === 0
                   ? "Select routes above"
                   : `Add ${addableSelected.length} selected to compare`}
