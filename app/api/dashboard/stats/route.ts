@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { range, type } = parsed.data;
+  const { range, type, country } = parsed.data;
 
   // Compute date range
   const now = new Date();
@@ -59,10 +59,11 @@ export async function GET(request: NextRequest) {
     userId,
     ...(type ? { type } : {}),
     ...(Object.keys(dateFilter).length > 0 ? { startDate: dateFilter } : {}),
+    ...(country ? { location: { endsWith: `, ${country}` } } : {}),
   };
 
-  // Fetch aggregate stats, weekly data, and recent activities in parallel
-  const [aggregateStats, activities, recentActivities] = await Promise.all([
+  // Fetch aggregate stats, weekly data, recent activities, and distinct countries in parallel
+  const [aggregateStats, activities, recentActivities, locationRows] = await Promise.all([
     prisma.activity.aggregate({
       where,
       _sum: { distance: true, duration: true, elevationGain: true },
@@ -99,6 +100,12 @@ export async function GET(request: NextRequest) {
         averagePace: true,
       },
     }),
+    // Fetch all distinct locations for this user (unfiltered by country) to populate the country combo box
+    prisma.activity.findMany({
+      where: { userId, location: { not: null } },
+      select: { location: true },
+      distinct: ["location"],
+    }),
   ]);
 
   // Build weekly distance data (last 12 weeks relative to filter range)
@@ -116,6 +123,18 @@ export async function GET(request: NextRequest) {
       name: a.name,
       distance: a.distance,
     }));
+
+  // Extract distinct countries from location strings ("City, Country" → "Country")
+  const countries = [
+    ...new Set(
+      locationRows
+        .map((r) => {
+          const parts = r.location?.split(", ");
+          return parts && parts.length >= 2 ? parts[parts.length - 1] : null;
+        })
+        .filter((c): c is string => c != null)
+    ),
+  ].sort((a, b) => a.localeCompare(b));
 
   // Calculate running streak and best efforts in parallel
   const [streak, bestEfforts] = await Promise.all([
@@ -142,6 +161,7 @@ export async function GET(request: NextRequest) {
     paceTrend,
     recentActivities,
     bestEfforts,
+    countries,
   });
 }
 

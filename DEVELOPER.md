@@ -413,7 +413,7 @@ All endpoints return JSON. Authentication is checked via `await auth()` from `@/
 - Response: `201 { activity: {...} }`
 
 **GET `/api/activities`**
-- Query params: `page` (default 1), `limit` (default 20, max 100), `sortBy` (startDate|distance|duration|averagePace), `sortOrder` (asc|desc), `type` (optional filter)
+- Query params: `page` (default 1), `limit` (default 20, max 100), `sortBy` (startDate|distance|duration|averagePace), `sortOrder` (asc|desc), `type` (optional filter), `country` (optional filter, max 100 chars), `from` (YYYY-MM-DD, optional), `to` (YYYY-MM-DD, optional)
 - Response: `{ activities: [...], pagination: { page, limit, total, totalPages } }`
 
 **GET `/api/activities/[id]`**
@@ -440,7 +440,7 @@ All endpoints return JSON. Authentication is checked via `await auth()` from `@/
 | GET | `/api/dashboard/global` | Yes | Global leaderboard |
 
 **GET `/api/dashboard/stats`**
-- Query params: `range` (7d|30d|90d|365d|ytd|all|custom), `type` (optional), `from` (YYYY-MM-DD, optional), `to` (YYYY-MM-DD, optional)
+- Query params: `range` (7d|30d|90d|365d|ytd|all|custom), `type` (optional), `country` (optional), `from` (YYYY-MM-DD, optional), `to` (YYYY-MM-DD, optional)
 - When `range=custom`, the `from` and `to` params define the date window
 - Recent activities respect the active type and date range filters
 - Response: `{ summary, weeklyData, monthlySummary, paceTrend, recentActivities, bestEfforts }`
@@ -596,8 +596,8 @@ Current limits:
 | `loginSchema` | `auth.ts` | Email + password (min 1 char) |
 | `registerSchema` | `auth.ts` | Name (2-100), email, password (8-128, upper+lower+digit) |
 | `gpxUploadSchema` | `activity.ts` | Activity type enum + optional name (max 200) |
-| `activityListQuerySchema` | `activity.ts` | Pagination, sorting, type filter |
-| `dashboardStatsQuerySchema` | `activity.ts` | Range (7d/30d/90d/365d/ytd/all/custom) + type filter + optional `from`/`to` dates |
+| `activityListQuerySchema` | `activity.ts` | Pagination, sorting, type filter, country filter, date range (`from`/`to`) |
+| `dashboardStatsQuerySchema` | `activity.ts` | Range (7d/30d/90d/365d/ytd/all/custom) + type filter + country filter + optional `from`/`to` dates |
 | `globalDashboardQuerySchema` | `activity.ts` | Period (weekly/monthly/all) + type filter |
 | `similarRoutesQuerySchema` | `activity.ts` | Threshold (0-100) + limit (1-100) for route similarity search |
 
