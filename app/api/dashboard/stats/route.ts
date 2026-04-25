@@ -319,12 +319,12 @@ async function calculateBestEfforts(
       for (const target of BEST_EFFORT_DISTANCES) {
         if (totalDist < target.meters) continue;
 
-        // Sliding window: advance tail pointer while window covers target distance
+        // Sliding window: advance tail to the latest start that still covers target
         let tail = 0;
         for (let head = 1; head < pts.length; head++) {
           while (
-            tail < head &&
-            pts[head].cumulativeDistance - pts[tail].cumulativeDistance > target.meters
+            tail + 1 < head &&
+            pts[head].cumulativeDistance - pts[tail + 1].cumulativeDistance >= target.meters
           ) {
             tail++;
           }
