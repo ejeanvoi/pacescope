@@ -3,8 +3,7 @@
 import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-
-const ROUTE_COLORS = ["#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c"];
+import { ROUTE_COLORS } from "@/lib/constants";
 
 interface CompareMapProps {
   activities: Array<{

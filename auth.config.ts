@@ -1,21 +1,10 @@
 import type { NextAuthConfig } from "next-auth";
-import Credentials from "next-auth/providers/credentials";
 import "@/types";
 
 // Edge-safe auth config — no Prisma imports
-// The actual authorize logic is in auth.ts
+// Providers are defined in auth.ts (non-edge-safe due to Prisma)
 export default {
-  providers: [
-    Credentials({
-      name: "credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-      },
-      // authorize is overridden in auth.ts
-      authorize: () => null,
-    }),
-  ],
+  providers: [],
   pages: {
     signIn: "/login",
   },
