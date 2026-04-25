@@ -3,8 +3,8 @@ import { loginSchema, registerSchema } from "../validators/auth";
 import {
   gpxUploadSchema,
   activityListQuerySchema,
-  GPX_MAX_FILE_SIZE,
 } from "../validators/activity";
+import { GPX_MAX_FILE_SIZE } from "../constants";
 
 // ─── Auth Validators ────────────────────────────────────────────────
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { exchangeToken } from "@/lib/strava";
+import { exchangeToken, STRAVA_OAUTH_SCOPE } from "@/lib/strava";
 import { encrypt } from "@/lib/crypto";
 
 export async function GET(request: NextRequest) {
@@ -54,14 +54,14 @@ export async function GET(request: NextRequest) {
         accessToken: encryptedAccess,
         refreshToken: encryptedRefresh,
         expiresAt: tokens.expires_at,
-        scope: "read,activity:read_all",
+        scope: STRAVA_OAUTH_SCOPE,
       },
       update: {
         stravaAthleteId: tokens.athlete.id,
         accessToken: encryptedAccess,
         refreshToken: encryptedRefresh,
         expiresAt: tokens.expires_at,
-        scope: "read,activity:read_all",
+        scope: STRAVA_OAUTH_SCOPE,
       },
     });
 

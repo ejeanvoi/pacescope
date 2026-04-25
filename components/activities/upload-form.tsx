@@ -13,15 +13,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { ACTIVITY_TYPE_OPTIONS, GPX_MAX_FILE_SIZE } from "@/lib/constants";
 import { Upload, FileText, X, Loader2 } from "lucide-react";
-
-const ACTIVITY_TYPES = [
-  { value: "RUN", label: "Run" },
-  { value: "TRAIL_RUN", label: "Trail Run" },
-  { value: "TREADMILL", label: "Treadmill" },
-] as const;
-
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export function UploadForm() {
   const router = useRouter();
@@ -37,7 +30,7 @@ export function UploadForm() {
     if (!f.name.toLowerCase().endsWith(".gpx")) {
       return "Only .gpx files are accepted.";
     }
-    if (f.size > MAX_FILE_SIZE) {
+    if (f.size > GPX_MAX_FILE_SIZE) {
       return "File too large. Maximum size is 10MB.";
     }
     return null;
@@ -199,7 +192,7 @@ export function UploadForm() {
           <div className="space-y-2">
             <Label>Activity Type</Label>
             <div className="flex gap-2">
-              {ACTIVITY_TYPES.map((t) => (
+              {ACTIVITY_TYPE_OPTIONS.map((t) => (
                 <Button
                   key={t.value}
                   type="button"

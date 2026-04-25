@@ -162,7 +162,7 @@ export function computeRouteSimilarity(
 // ─── Bounding Box Helpers ───────────────────────────────────────────
 
 /** ~200m padding in degrees at mid-latitudes */
-const BBOX_PADDING_DEG = 0.002;
+export const BBOX_PADDING_DEG = 0.002;
 
 export function boundingBoxesOverlap(
   a: RouteBoundingBox,

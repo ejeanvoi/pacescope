@@ -21,13 +21,11 @@ import { ComparePaceAlongTrackChart } from "./compare-pace-along-track-chart";
 import { CompareHeartRateChart } from "./compare-heart-rate-chart";
 import { SimilarRoutes } from "./similar-routes";
 import { CompareTrendAnalysis } from "./compare-trend-analysis";
-import { ROUTE_COLORS } from "@/lib/constants";
+import { ROUTE_COLORS, ACTIVITY_TYPE_OPTIONS, MAX_COMPARE_ACTIVITIES } from "@/lib/constants";
 
 const ACTIVITY_TYPES = [
   { value: "ALL", label: "All" },
-  { value: "RUN", label: "Run" },
-  { value: "TRAIL_RUN", label: "Trail" },
-  { value: "TREADMILL", label: "Treadmill" },
+  ...ACTIVITY_TYPE_OPTIONS,
 ];
 
 interface ActivitySummary {
@@ -155,7 +153,7 @@ export function CompareView() {
     setSelectedIds((prev) =>
       prev.includes(id)
         ? prev.filter((x) => x !== id)
-        : prev.length < 20
+        : prev.length < MAX_COMPARE_ACTIVITIES
           ? [...prev, id]
           : prev
     );
@@ -164,7 +162,7 @@ export function CompareView() {
   const addMultipleToCompare = (ids: string[]) => {
     setSelectedIds((prev) => {
       const toAdd = ids.filter((id) => !prev.includes(id));
-      return [...prev, ...toAdd].slice(0, 20);
+      return [...prev, ...toAdd].slice(0, MAX_COMPARE_ACTIVITIES);
     });
   };
 
@@ -181,7 +179,7 @@ export function CompareView() {
             Compare Activities
           </h1>
           <p className="text-muted-foreground">
-            Select 2-20 activities to compare
+            Select 2-{MAX_COMPARE_ACTIVITIES} activities to compare
           </p>
         </div>
       </div>
@@ -191,7 +189,7 @@ export function CompareView() {
         <CardHeader>
           <CardTitle className="text-base">Select Activities</CardTitle>
           <CardDescription>
-            {selectedIds.length} of 20 selected
+            {selectedIds.length} of {MAX_COMPARE_ACTIVITIES} selected
             {hasFilters &&
               ` · showing ${filteredActivities.length} of ${allActivities.length}`}
           </CardDescription>
@@ -375,7 +373,7 @@ export function CompareView() {
       )}
 
       {/* Comparison results */}
-      {selectedIds.length < 2 && selectedIds.length !== 1 && (
+      {selectedIds.length === 0 && (
         <p className="text-center text-sm text-muted-foreground">
           Select at least 2 activities to compare.
         </p>
