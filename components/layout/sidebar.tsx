@@ -21,6 +21,7 @@ const navItems = [
   { href: "/activities/compare", label: "Compare", icon: GitCompareArrows },
   { href: "/global", label: "Global", icon: Globe },
   { href: "/strava", label: "Strava", icon: Link2 },
+  { href: "/garmin", label: "Garmin", icon: Link2 },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

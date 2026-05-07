@@ -1,11 +1,12 @@
 # PaceScope
 
-A self-hosted web app for tracking and analyzing your running activities. Upload GPX files from any device, sync from Strava, and explore your data through personal dashboards, activity comparisons, and an optional global leaderboard.
+A self-hosted web app for tracking and analyzing your running activities. Upload GPX files from any device, sync from Strava or Garmin Connect, and explore your data through personal dashboards, activity comparisons, and an optional global leaderboard.
 
 ## Features
 
 - **GPX upload** — import runs from any GPS watch or app that exports GPX
 - **Strava sync** — connect your Strava account and import activities automatically
+- **Garmin Connect sync** — connect your Garmin account (with MFA support) and import activities including GPS tracks, heart rate, and elevation
 - **Personal dashboard** — distance, pace, elevation, and heart rate trends over configurable time ranges
 - **Best efforts** — fastest recorded times for standard distances (1K, 5K, 10K, half, full marathon)
 - **Activity comparison** — overlay GPS tracks, pace, elevation, and heart rate across multiple runs
@@ -87,11 +88,11 @@ npm run dev          # http://localhost:3000
 | `DATABASE_URL` | Yes | PostgreSQL connection string |
 | `AUTH_SECRET` | Yes | Session signing key — `openssl rand -base64 32` |
 | `AUTH_URL` | Yes | Full URL of your deployment (e.g. `https://pace.example.com`) |
-| `ENCRYPTION_KEY` | Yes* | AES-256 key for Strava token storage — `openssl rand -hex 32` |
+| `ENCRYPTION_KEY` | Yes* | AES-256 key for token storage — `openssl rand -hex 32` |
 | `STRAVA_CLIENT_ID` | No | Strava OAuth app ID |
 | `STRAVA_CLIENT_SECRET` | No | Strava OAuth app secret |
 
-\* Required only if you enable Strava integration.
+\* Required if you enable Strava or Garmin integration.
 
 ---
 
@@ -106,6 +107,20 @@ To enable Strava sync:
 
 ---
 
+## Garmin Connect Integration
+
+No API credentials are required. Garmin Connect sync uses your existing Garmin account:
+
+1. Make sure `ENCRYPTION_KEY` is set in your `.env`
+2. Navigate to the **Garmin** page in the app
+3. Enter your Garmin Connect email and password
+4. If your account has two-factor authentication enabled, enter the one-time code sent to your email
+5. Click **Sync Now** to import your running activities
+
+Credentials are used only to obtain tokens and are never stored. Tokens are encrypted at rest using AES-256-GCM. Syncing fetches all running activities (runs, trail runs, treadmill) with GPS tracks, heart rate, and elevation data.
+
+---
+
 ## Usage
 
 ### Uploading a run
@@ -115,6 +130,10 @@ Go to **Activities → Upload** and select a `.gpx` file. Choose the activity ty
 ### Syncing from Strava
 
 Go to the **Strava** page and click **Connect with Strava**. After authorizing, click **Sync Now** to import your activities. Subsequent syncs only fetch new activities.
+
+### Syncing from Garmin Connect
+
+Go to the **Garmin** page and enter your Garmin Connect credentials. If MFA is enabled on your account, you will be prompted for the email code. Once connected, click **Sync Now** to import your running activities.
 
 ### Comparing activities
 

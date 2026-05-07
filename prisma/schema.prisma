@@ -28,6 +28,7 @@ model User {
   sessions         Session[]
   activities       Activity[]
   stravaConnection StravaConnection?
+  garminConnection GarminConnection?
 
   @@index([role])
 }
@@ -90,6 +91,7 @@ enum ActivityType {
 enum ActivitySource {
   GPX
   STRAVA
+  GARMIN
 }
 
 model Activity {
@@ -101,6 +103,7 @@ model Activity {
   name   String
 
   stravaActivityId String? @unique
+  garminActivityId String? @unique
   description      String? @db.Text
 
   startDate       DateTime
@@ -173,4 +176,20 @@ model StravaConnection {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([stravaAthleteId])
+}
+
+model GarminConnection {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  garminUserId String
+  accessToken  String @db.Text // encrypted
+  refreshToken String @db.Text // encrypted
+  tokenExpiry  Int // unix timestamp
+  lastSyncAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

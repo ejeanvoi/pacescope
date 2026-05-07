@@ -1,6 +1,6 @@
 # PaceScope Developer Guide
 
-PaceScope is a self-hosted web application for centralizing and analyzing running activities. Users upload GPX files or sync from Strava, then explore metrics through personal dashboards, activity comparisons, and a global leaderboard. An admin panel provides user management. The stack is Next.js 16 (App Router), PostgreSQL, Prisma, and NextAuth v5.
+PaceScope is a self-hosted web application for centralizing and analyzing running activities. Users upload GPX files or sync from Strava or Garmin Connect, then explore metrics through personal dashboards, activity comparisons, and a global leaderboard. An admin panel provides user management. The stack is Next.js 16 (App Router), PostgreSQL, Prisma, and NextAuth v5.
 
 ---
 
@@ -82,26 +82,26 @@ The app is available at `http://localhost:3000`. PostgreSQL runs on port 5432.
 ### High-Level Overview
 
 ```
-                                    ┌──────────────────┐
-                                    │   Strava API     │
-                                    └────────┬─────────┘
-                                             │ OAuth + REST
-┌──────────┐    HTTPS    ┌──────────────────────────────────────────┐
-│  Browser │ ──────────► │              Next.js 16                  │
-│  (React) │ ◄────────── │                                          │
-└──────────┘             │  ┌────────────┐   ┌───────────────────┐  │
-                         │  │ Middleware  │──►│   API Routes      │  │
-                         │  │ (auth +    │   │   (app/api/*)     │  │
-                         │  │  headers)  │   └────────┬──────────┘  │
-                         │  └────────────┘            │             │
-                         │                    ┌───────▼──────────┐  │
-                         │                    │   Prisma ORM     │  │
-                         │                    └───────┬──────────┘  │
-                         └────────────────────────────┼─────────────┘
-                                                      │
-                                              ┌───────▼──────────┐
-                                              │   PostgreSQL 16  │
-                                              └──────────────────┘
+                         ┌──────────────────┐  ┌──────────────────────┐
+                         │   Strava API     │  │  Garmin Connect API  │
+                         └────────┬─────────┘  └──────────┬───────────┘
+                                  │ OAuth + REST           │ SSO + OAuth1/2
+┌──────────┐    HTTPS    ┌────────────────────────────────────────────────┐
+│  Browser │ ──────────► │                  Next.js 16                    │
+│  (React) │ ◄────────── │                                                │
+└──────────┘             │  ┌────────────┐   ┌───────────────────────┐   │
+                         │  │ Middleware  │──►│     API Routes        │   │
+                         │  │ (auth +    │   │     (app/api/*)        │   │
+                         │  │  headers)  │   └────────────┬──────────┘   │
+                         │  └────────────┘                │              │
+                         │                       ┌────────▼──────────┐   │
+                         │                       │    Prisma ORM     │   │
+                         │                       └────────┬──────────┘   │
+                         └────────────────────────────────┼──────────────┘
+                                                          │
+                                                 ┌────────▼──────────┐
+                                                 │   PostgreSQL 16   │
+                                                 └───────────────────┘
 ```
 
 ### Request Lifecycle
@@ -164,8 +164,9 @@ pacescope/
 │   │   │   ├── [id]/page.tsx         # Activity detail (map, charts)
 │   │   │   ├── upload/page.tsx       # GPX upload form
 │   │   │   └── compare/page.tsx      # Side-by-side comparison
-│   │   ├── global/page.tsx           # Global leaderboard
+│   │   │   ├── global/page.tsx           # Global leaderboard
 │   │   ├── strava/page.tsx           # Strava connection manager
+│   │   ├── garmin/page.tsx           # Garmin connection manager
 │   │   └── settings/page.tsx         # User settings
 │   ├── admin/
 │   │   ├── layout.tsx                # Admin layout guard
@@ -175,6 +176,7 @@ pacescope/
 │       ├── activities/
 │       ├── dashboard/
 │       ├── strava/
+│       ├── garmin/
 │       ├── admin/
 │       ├── user/
 │       └── health/
@@ -186,6 +188,7 @@ pacescope/
 │   ├── activities/                   # ActivityList, UploadForm, MapView, charts
 │   ├── dashboard/                    # DashboardView, filters, charts
 │   ├── strava/                       # StravaManager
+│   ├── garmin/                       # GarminManager
 │   └── admin/                        # UserTable
 │
 ├── lib/                              # Shared utilities and business logic
@@ -194,6 +197,7 @@ pacescope/
 │   ├── gpx.ts                        # GPX XML parsing
 │   ├── crypto.ts                     # AES-256-GCM encryption
 │   ├── strava.ts                     # Strava API client
+│   ├── garmin.ts                     # Garmin Connect API client
 │   ├── prisma.ts                     # Prisma client singleton
 │   ├── rate-limit.ts                 # In-memory rate limiter
 │   ├── utils.ts                      # cn() class merging utility
@@ -256,17 +260,30 @@ pacescope/
        │         │    │ averageHeartRate│  │
        │         │    │ location        │  │
        │         │    │ stravaActivityId│  │
+       │         │    │ garminActivityId│  │
        │         │    └─────────────────┘  │
        │         │                         │
        │    ┌────┴──────────────┐          │
        │    │ StravaConnection  │          │
        │    ├───────────────────┤          │
+       ├───►│ id (PK)           │          │
+       │    │ userId (FK, uniq) │          │
+       │    │ stravaAthleteId   │          │
+       │    │ accessToken (enc) │          │
+       │    │ refreshToken(enc) │          │
+       │    │ expiresAt         │          │
+       │    │ lastSyncAt        │          │
+       │    └───────────────────┘          │
+       │                                   │
+       │    ┌───────────────────┐          │
+       │    │ GarminConnection  │          │
+       │    ├───────────────────┤          │
        └───►│ id (PK)           │          │
             │ userId (FK, uniq) │          │
-            │ stravaAthleteId   │          │
+            │ garminUserId      │          │
             │ accessToken (enc) │          │
             │ refreshToken(enc) │          │
-            │ expiresAt         │          │
+            │ tokenExpiry       │          │
             │ lastSyncAt        │          │
             └───────────────────┘          │
                                            │
@@ -279,9 +296,10 @@ pacescope/
 | Model | Purpose | Key Fields |
 |-------|---------|-----------|
 | **User** | Registered user | `email` (unique), `passwordHash`, `role` (USER/ADMIN), `globalVisibility` (opt-in leaderboard) |
-| **Activity** | A single run | `type` (RUN/TRAIL_RUN/TREADMILL), `source` (GPX/STRAVA), `distance` (meters), `duration` (seconds), `averagePace` (sec/km), `location` (reverse-geocoded, nullable) |
+| **Activity** | A single run | `type` (RUN/TRAIL_RUN/TREADMILL), `source` (GPX/STRAVA/GARMIN), `distance` (meters), `duration` (seconds), `averagePace` (sec/km), `location` (reverse-geocoded, nullable), `stravaActivityId` / `garminActivityId` (unique, for deduplication) |
 | **ActivityPoint** | GPS trackpoint | `latitude`, `longitude`, `elevation`, `timestamp`, `heartRate`, `cumulativeDistance` |
-| **StravaConnection** | OAuth link | `accessToken` (AES-256-GCM encrypted), `refreshToken` (encrypted), `expiresAt` (unix timestamp) |
+| **StravaConnection** | Strava OAuth link | `accessToken` (AES-256-GCM encrypted), `refreshToken` (encrypted), `expiresAt` (unix timestamp) |
+| **GarminConnection** | Garmin token store | `accessToken` (encrypted OAuth2 token), `refreshToken` (encrypted OAuth1 credentials used to re-issue OAuth2 tokens), `tokenExpiry` (unix timestamp), `lastSyncAt` |
 
 ### Indexes
 
@@ -295,6 +313,7 @@ pacescope/
 | `ActivityPoint(activityId)` | Load track for an activity |
 | `ActivityPoint(activityId, index)` | Ordered trackpoint retrieval |
 | `StravaConnection(stravaAthleteId)` | Strava deduplication |
+| `Activity(garminActivityId)` | Garmin deduplication (unique) |
 
 ### Database Workflows
 
@@ -463,6 +482,32 @@ All endpoints return JSON. Authentication is checked via `await auth()` from `@/
 | POST | `/api/strava/sync` | Yes | Sync activities from Strava |
 | POST | `/api/strava/disconnect` | Yes | Remove Strava connection |
 
+### Garmin
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/garmin/connect` | Yes | Authenticate with Garmin credentials |
+| POST | `/api/garmin/verify-mfa` | Yes | Complete MFA challenge |
+| POST | `/api/garmin/sync` | Yes | Sync activities from Garmin Connect |
+| POST | `/api/garmin/disconnect` | Yes | Remove Garmin connection |
+
+**POST `/api/garmin/connect`**
+- Body: `{ email: string, password: string }`
+- Initiates the Garmin SSO login. If the account has MFA enabled, returns `{ requiresMfa: true, sessionState: string }` — the `sessionState` is an encrypted blob the client must pass back to `/api/garmin/verify-mfa`
+- On success: stores encrypted OAuth2 access token and OAuth1 credentials in `GarminConnection`, returns `{ connected: true }`
+
+**POST `/api/garmin/verify-mfa`**
+- Body: `{ mfaCode: string, sessionState: string }`
+- `sessionState` is the encrypted blob returned by `/api/garmin/connect`
+- Completes the OAuth flow and stores tokens, returns `{ connected: true }`
+
+**POST `/api/garmin/sync`**
+- Fetches all activities using offset pagination (`start=0,100,200,...`), stopping when the API returns an empty page
+- Skips non-running activities (`activityType.typeKey` not in the running set)
+- Skips activities already in the database (by `garminActivityId`)
+- For each new activity: downloads GPX → parses trackpoints → computes metrics → creates `Activity` + `ActivityPoint` records in a transaction
+- Response: `{ synced, skipped, skippedNonRunning, skippedDuplicate, pages }`
+
 ### Admin
 
 | Method | Path | Auth | Description |
@@ -601,6 +646,48 @@ Complete OAuth and data sync client.
 2. Fetch activities page by page (since `lastSyncAt`), `STRAVA_PAGE_SIZE` per request
 3. Skip non-running activities and duplicates (by `stravaActivityId`)
 4. For each new activity: fetch GPS streams → convert to TrackPoints → compute metrics → create Activity + Points in transaction
+5. Update `lastSyncAt`
+
+### `lib/garmin.ts` — Garmin Connect Integration
+
+Implements Garmin's unofficial SSO + OAuth token flow entirely in TypeScript. No official Garmin API credentials are required.
+
+**Auth flow:**
+
+Garmin does not offer a standard public OAuth flow. Instead:
+1. `GET https://sso.garmin.com/mobile/sso/en/sign-in` — establishes session cookies
+2. `POST https://sso.garmin.com/mobile/api/login` with `{username, password}` as JSON — returns either a `serviceTicketId` or `MFA_REQUIRED`
+3. If MFA: `POST https://sso.garmin.com/mobile/api/mfa/verifyCode` with the email code → returns `serviceTicketId`
+4. `GET https://connectapi.garmin.com/oauth-service/oauth/preauthorized?ticket=...` (OAuth1-signed) → OAuth1 token + secret
+5. `POST https://connectapi.garmin.com/oauth-service/oauth/exchange/user/2.0` (OAuth1-signed) → OAuth2 `access_token`
+
+OAuth1 consumer credentials are fetched once from an S3 URL (`thegarth.s3.amazonaws.com/oauth_consumer.json`) and cached in-process.
+
+**Token refresh:**
+
+Garmin does not use the standard OAuth2 `refresh_token` grant. To renew an expired OAuth2 token, the stored OAuth1 credentials are re-submitted to the exchange endpoint (step 5 above). The `GarminConnection.refreshToken` field stores an encrypted JSON blob containing the OAuth1 token, secret, and optional MFA token — not an OAuth2 refresh token.
+
+**MFA session state:**
+
+Between `/api/garmin/connect` and `/api/garmin/verify-mfa`, the in-flight SSO cookies and MFA method are serialized to JSON, encrypted with `encrypt()` from `lib/crypto.ts`, and returned to the client as `sessionState`. The client echoes this blob back on the MFA request — no server-side session storage is needed.
+
+**Public API:**
+
+| Function | Purpose |
+|----------|---------|
+| `initiateLogin(email, password)` | Start login; returns tokens on success or `{ requiresMfa, sessionState }` |
+| `completeMfaLogin(sessionState, mfaCode)` | Complete MFA challenge; returns tokens |
+| `getValidAccessToken(connection)` | Return decrypted token, re-exchange OAuth1 if expired, update DB |
+| `fetchActivities(token, start?, limit?)` | Fetch one page of activities (offset pagination) |
+| `downloadActivityGpx(token, activityId)` | Download GPX text for a single activity |
+| `isRunningActivity(activity)` | True for `running`, `trail_running`, `treadmill_running`, `indoor_running`, `track_running`, `virtual_run` |
+| `mapGarminActivityType(typeKey)` | Map Garmin type key to app enum (`RUN`/`TRAIL_RUN`/`TREADMILL`) |
+
+**Sync flow** (`/api/garmin/sync`):
+1. Get valid access token (re-exchange OAuth1 credentials if expired)
+2. Fetch all activities using offset pagination, 100 per page; stop when API returns an empty page
+3. Skip non-running activity types; skip activities already in DB by `garminActivityId`
+4. For each new activity: download GPX → `parseGpx()` → compute metrics → create `Activity` + `ActivityPoint` records in a transaction
 5. Update `lastSyncAt`
 
 ### `lib/rate-limit.ts` — Rate Limiting
@@ -977,11 +1064,11 @@ CSP and HSTS are intentionally omitted — CSP requires per-deployment tuning (i
 | `DATABASE_URL` | Yes | PostgreSQL connection string | `postgresql://user:pass@host:5432/db` |
 | `AUTH_SECRET` | Yes | NextAuth session signing key | `openssl rand -base64 32` |
 | `AUTH_URL` | Yes | Application base URL | `https://your-domain.com` |
-| `ENCRYPTION_KEY` | Yes* | AES-256 key for Strava tokens | `openssl rand -hex 32` |
+| `ENCRYPTION_KEY` | Yes* | AES-256 key for token storage | `openssl rand -hex 32` |
 | `STRAVA_CLIENT_ID` | No | Strava OAuth app ID | From [strava.com/settings/api](https://www.strava.com/settings/api) |
 | `STRAVA_CLIENT_SECRET` | No | Strava OAuth app secret | From Strava settings |
 
-\* Required only if Strava integration is enabled.
+\* Required if Strava or Garmin integration is enabled.
 
 ### Dockerfile (Multi-Stage)
 
@@ -1112,6 +1199,19 @@ Error: AUTH_SECRET is missing
 ```
 
 This means `STRAVA_CLIENT_ID` or `STRAVA_CLIENT_SECRET` is missing from `.env`. See [strava.com/settings/api](https://www.strava.com/settings/api) to create an app. Set "Authorization Callback Domain" to `localhost` for local development.
+
+### Garmin Login Fails
+
+- **"Login request failed: 401"** — incorrect Garmin credentials
+- **"OAuth1 preauth failed"** — the consumer credentials fetch from S3 may have failed; check network connectivity
+- **"MFA verification failed"** — wrong or expired code; request a new one by reconnecting
+- If Garmin changes their SSO flow, the sign-in and login URLs in `lib/garmin.ts` may need updating
+
+### Garmin Sync Returns 0 Activities
+
+- Verify the Garmin connection is active on the Garmin page
+- Check server logs for `[Garmin sync]` lines — they show how many activities were fetched per page and which types were skipped
+- Activities are filtered to running types only (`running`, `trail_running`, `treadmill_running`, `indoor_running`, `track_running`, `virtual_run`); other activity types are counted in `skippedNonRunning`
 
 ### Build Fails with Type Errors
 
